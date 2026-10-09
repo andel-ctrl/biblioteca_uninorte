@@ -1,0 +1,473 @@
+/* ==========================================================================
+   SISTEMA DE BIBLIOTECA — DISEÑO EDITORIAL MODERNO (Inspirado en Helias Oils)
+   Paleta cálida, minimalismo botánico y tipografía refinada
+   ========================================================================== */
+
+:root {
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Colores base: Papel lino cálido & tonos botánicos */
+    --color-bg: #FAF7F2;
+    --color-surface: #FFFFFF;
+    --color-surface-soft: #F5EFE6;
+    --color-surface-hover: #FBF8F3;
+    --color-border: #E8E2D7;
+    --color-border-subtle: #F0EBE2;
+
+    /* Tipografía */
+    --color-text-main: #23201D;
+    --color-text-secondary: #6F6961;
+    --color-text-tertiary: #9C958B;
+
+    /* Acentos */
+    --color-forest: #2B3A2C;       /* Verde bosque profundo */
+    --color-forest-hover: #1C271D;
+    --color-forest-subtle: #E8EFE8;
+
+    --color-terracotta: #B86B49;   /* Terracota cálido */
+    --color-terracotta-subtle: #F9EFE9;
+
+    --color-amber: #8A641E;
+    --color-amber-subtle: #FDF5E6;
+
+    --color-clay: #963527;
+    --color-clay-subtle: #FAECE8;
+
+    /* Sombras suaves */
+    --shadow-sm: 0 2px 8px rgba(35, 32, 29, 0.03);
+    --shadow-md: 0 8px 24px rgba(35, 32, 29, 0.05);
+    --shadow-lg: 0 18px 40px rgba(35, 32, 29, 0.08);
+
+    /* Radios */
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-pill: 9999px;
+}
+
+/* Base */
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text-main);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3, h4, .font-serif {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--color-text-main);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+/* ==========================================================================
+   NAVBAR EDITORIAL
+   ========================================================================== */
+.navbar-custom {
+    background: rgba(250, 247, 242, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.85rem 0;
+    transition: all 0.3s ease;
+}
+
+.navbar-custom .navbar-brand {
+    font-family: var(--font-heading);
+    color: var(--color-text-main);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.brand-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--color-forest);
+    color: #FAF7F2;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-family: var(--font-heading);
+    font-weight: 700;
+}
+
+.navbar-custom .nav-link {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: 0.92rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+.navbar-custom .nav-link:hover,
+.navbar-custom .nav-link.active {
+    color: var(--color-text-main);
+    background-color: var(--color-surface-soft);
+}
+
+.user-pill {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-role-tag {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-forest-subtle);
+    color: var(--color-forest);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   BOTONES
+   ========================================================================== */
+.btn-primary, .btn-forest {
+    background-color: var(--color-forest) !important;
+    border-color: var(--color-forest) !important;
+    color: #FAF7F2 !important;
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 0.55rem 1.25rem;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 6px rgba(43, 58, 44, 0.15);
+}
+
+.btn-primary:hover, .btn-forest:hover {
+    background-color: var(--color-forest-hover) !important;
+    border-color: var(--color-forest-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(43, 58, 44, 0.22);
+}
+
+.btn-outline-primary, .btn-outline-forest {
+    border-color: var(--color-forest) !important;
+    color: var(--color-forest) !important;
+    background: transparent;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover, .btn-outline-forest:hover {
+    background-color: var(--color-forest) !important;
+    color: #FAF7F2 !important;
+}
+
+.btn-terracotta {
+    background-color: var(--color-terracotta) !important;
+    border-color: var(--color-terracotta) !important;
+    color: #FFFFFF !important;
+    border-radius: var(--radius-sm);
+}
+
+/* ==========================================================================
+   TARJETAS EDITORIALES (CARDS)
+   ========================================================================== */
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding: 1.1rem 1.3rem;
+}
+
+/* Tarjeta de libro */
+.book-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.book-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: #D6CEBF;
+}
+
+.book-cover-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: var(--color-surface-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.book-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.book-card:hover .book-cover-img {
+    transform: scale(1.03);
+}
+
+.book-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #F5EFE6 0%, #EBE3D5 100%);
+    color: var(--color-text-secondary);
+    padding: 1rem;
+    text-align: center;
+}
+
+.book-category-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-terracotta);
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+.book-title {
+    font-family: var(--font-heading);
+    font-size: 1.12rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.35rem;
+    color: var(--color-text-main);
+}
+
+.book-author {
+    color: var(--color-text-secondary);
+    font-size: 0.86rem;
+    font-style: italic;
+    margin-bottom: 0.75rem;
+}
+
+/* ==========================================================================
+   BADGES / PILLS REFINADOS
+   ========================================================================== */
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.badge-disponible {
+    background-color: var(--color-forest-subtle);
+    color: var(--color-forest);
+    border: 1px solid #D2DFD2;
+}
+
+.badge-prestado {
+    background-color: var(--color-amber-subtle);
+    color: var(--color-amber);
+    border: 1px solid #F0DFBE;
+}
+
+.badge-vencido, .badge-perdido {
+    background-color: var(--color-clay-subtle);
+    color: var(--color-clay);
+    border: 1px solid #F5D3CC;
+}
+
+.badge-devuelto {
+    background-color: var(--color-surface-soft);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+
+/* ==========================================================================
+   FILTROS Y FORMULARIOS
+   ========================================================================== */
+.filter-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.form-control, .form-select {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-main);
+    font-size: 0.92rem;
+    padding: 0.55rem 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #FFFFFF;
+    border-color: var(--color-forest);
+    box-shadow: 0 0 0 3px rgba(43, 58, 44, 0.12);
+    color: var(--color-text-main);
+}
+
+/* ==========================================================================
+   KPIS EN DASHBOARD
+   ========================================================================== */
+.kpi-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.kpi-number {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-main);
+    margin-bottom: 0.3rem;
+}
+
+.kpi-label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.kpi-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.kpi-icon-forest { background: var(--color-forest-subtle); color: var(--color-forest); }
+.kpi-icon-amber  { background: var(--color-amber-subtle); color: var(--color-amber); }
+.kpi-icon-terracotta { background: var(--color-terracotta-subtle); color: var(--color-terracotta); }
+.kpi-icon-clay   { background: var(--color-clay-subtle); color: var(--color-clay); }
+
+/* ==========================================================================
+   TABLAS
+   ========================================================================== */
+.table {
+    --bs-table-bg: transparent;
+    color: var(--color-text-main);
+    font-size: 0.92rem;
+}
+
+.table > thead th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    background-color: var(--color-surface-soft);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.85rem 1rem;
+}
+
+.table > tbody td {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: var(--color-surface-hover);
+}
+
+/* ==========================================================================
+   ALERTAS Y NOTIFICACIONES
+   ========================================================================== */
+.alert {
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    background-color: var(--color-forest-subtle);
+    color: var(--color-forest);
+    border-color: #D2DFD2;
+}
+
+.alert-danger {
+    background-color: var(--color-clay-subtle);
+    color: var(--color-clay);
+    border-color: #F5D3CC;
+}
+
+.alert-warning {
+    background-color: var(--color-amber-subtle);
+    color: var(--color-amber);
+    border-color: #F0DFBE;
+}
+
+.alert-info {
+    background-color: var(--color-surface-soft);
+    color: var(--color-text-main);
+    border-color: var(--color-border);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+.footer-editorial {
+    background: transparent;
+    border-top: 1px solid var(--color-border);
+    padding: 2rem 0;
+    margin-top: auto;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}

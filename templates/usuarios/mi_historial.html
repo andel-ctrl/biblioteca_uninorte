@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Mis Préstamos — Biblioteca{% endblock %}
+{% block content %}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+    <div>
+        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Panel del Lector</span>
+        <h1 class="display-6 fw-bold mb-1">Mis Préstamos & Solicitudes</h1>
+        <p class="text-muted mb-0">Seguimiento de tus libros prestados, plazos de entrega y estado de cuenta.</p>
+    </div>
+    <div>
+        <div class="card p-2 px-3 shadow-sm d-flex flex-row align-items-center gap-3">
+            <div>
+                <small class="text-muted d-block">Estado de Cuenta</small>
+                {% if perfil.esta_activo %}
+                <span class="badge-status badge-disponible"><i class="bi bi-check-circle"></i> Activo</span>
+                {% else %}
+                <span class="badge-status badge-vencido"><i class="bi bi-x-circle"></i> Bloqueado</span>
+                {% endif %}
+            </div>
+            <div class="border-start ps-3" style="border-color: var(--color-border) !important;">
+                <small class="text-muted d-block">Código</small>
+                <span class="font-monospace fw-semibold">{{ perfil.codigo_universitario }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-5">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 font-serif">Historial Completo</h5>
+        <a href="{% url 'catalogos:libro_list' %}" class="btn btn-sm btn-outline-forest">
+            <i class="bi bi-plus-lg me-1"></i> Explorar Catálogo
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Libro</th>
+                    <th>Ejemplar</th>
+                    <th>Solicitud</th>
+                    <th>Vencimiento</th>
+                    <th>Estado</th>
+                    <th>Multa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in prestamos %}
+                <tr>
+                    <td class="text-muted small">#{{ p.pk }}</td>
+                    <td class="fw-medium font-serif">{{ p.ejemplar.libro.titulo|truncatechars:42 }}</td>
+                    <td><code class="text-dark bg-light px-2 py-1 rounded">{{ p.ejemplar.codigo_barras }}</code></td>
+                    <td class="text-muted small">{{ p.fecha_solicitud|date:"d M Y" }}</td>
+                    <td class="small">
+                        {% if p.fecha_vencimiento %}
+                            <span class="{% if p.estado == 'vencido' %}text-danger fw-bold{% endif %}">{{ p.fecha_vencimiento|date:"d M Y" }}</span>
+                        {% else %}
+                            <span class="text-muted">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.estado == 'pendiente' %}
+                        <span class="badge-status badge-prestado">Pendiente</span>
+                        {% elif p.estado == 'activo' %}
+                        <span class="badge-status badge-disponible">Activo</span>
+                        {% elif p.estado == 'vencido' %}
+                        <span class="badge-status badge-vencido">Vencido</span>
+                        {% elif p.estado == 'devuelto' %}
+                        <span class="badge-status badge-devuelto">Devuelto</span>
+                        {% elif p.estado == 'rechazado' %}
+                        <span class="badge-status badge-vencido">Rechazado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.devolucion and p.devolucion.monto_multa > 0 %}
+                            <span class="fw-semibold text-danger">${{ p.devolucion.monto_multa }}</span>
+                        {% elif p.multa_estimada > 0 %}
+                            <span class="fw-semibold text-danger">${{ p.multa_estimada }} (mora)</span>
+                        {% else %}
+                            <span class="text-muted">&mdash;</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">
+                        <i class="bi bi-book fs-1 d-block mb-2 opacity-25"></i>
+                        Aún no has solicitado préstamos. ¡Explora el catálogo y pide tu primer libro!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

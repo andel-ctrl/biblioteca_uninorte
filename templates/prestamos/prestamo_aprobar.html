@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Aprobar Préstamo #{{ prestamo.pk }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white"><i class="bi bi-check-circle me-2"></i>Aprobar Préstamo #{{ prestamo.pk }}</div>
+            <div class="card-body">
+                <div class="alert alert-light border">
+                    <strong>Usuario:</strong> {{ prestamo.usuario.get_nombre_completo }}<br>
+                    <strong>Libro:</strong> {{ prestamo.ejemplar.libro.titulo }}<br>
+                    <strong>Ejemplar:</strong> <code>{{ prestamo.ejemplar.codigo_barras }}</code><br>
+                    <strong>Solicitud:</strong> {{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}
+                </div>
+                <p class="text-muted small">Al aprobar, el ejemplar se marcará como <em>prestado</em> y se asignará fecha de vencimiento (15 días por defecto).</p>
+                <form method="post" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Aprobar</button>
+                    <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

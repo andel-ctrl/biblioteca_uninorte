@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Confirmar Solicitud{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white"><i class="bi bi-bookmark-plus me-2"></i>Solicitar Préstamo</div>
+            <div class="card-body">
+                <p>¿Confirmas la solicitud del préstamo para el siguiente ejemplar?</p>
+                <div class="alert alert-light border">
+                    <strong>Libro:</strong> {{ ejemplar.libro.titulo }}<br>
+                    <strong>Código:</strong> <code>{{ ejemplar.codigo_barras }}</code><br>
+                    <strong>Ubicación:</strong> {{ ejemplar.ubicacion }}<br>
+                    <strong>Estado:</strong> <span class="badge bg-success">Disponible</span>
+                </div>
+                <p class="text-muted small">La solicitud será revisada y aprobada por el bibliotecario.</p>
+                <form method="post" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Sí, solicitar</button>
+                    <a href="{% url 'catalogos:libro_detail' ejemplar.libro.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

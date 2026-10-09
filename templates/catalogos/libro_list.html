@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Catálogo de Libros — Biblioteca{% endblock %}
+{% block content %}
+
+<!-- ENCABEZADO EDITORIAL -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4 pt-2">
+    <div>
+        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Colección Universitaria</span>
+        <h1 class="display-6 fw-bold mb-1">Catálogo de Libros</h1>
+        <p class="text-muted mb-0">Explora obras académicas, literatura y títulos disponibles para préstamo.</p>
+    </div>
+    {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
+    <div>
+        <a href="{% url 'catalogos:libro_create' %}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+            <i class="bi bi-plus-lg"></i>
+            <span>Nuevo Libro</span>
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- FILTROS DE BÚSQUEDA MINIMALISTAS -->
+<form method="get" class="filter-card mb-5">
+    <div class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-end-0 text-muted" style="border-color: var(--color-border);">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" name="q" value="{{ query }}" class="form-control border-start-0 ps-0" placeholder="Buscar por título, autor o ISBN...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="categoria" class="form-select">
+                <option value="">Todas las categorías</option>
+                {% for cat in categorias %}
+                <option value="{{ cat.id }}" {% if categoria_id == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="disponible" class="form-select">
+                <option value="">Todos</option>
+                <option value="1" {% if disponible == '1' %}selected{% endif %}>Disponibles</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-forest w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+<!-- GRILLA EDITORIAL DE LIBROS -->
+<div class="row g-4">
+    {% for libro in libros %}
+    <div class="col-sm-6 col-md-4 col-lg-3">
+        <div class="book-card">
+            <!-- Portada -->
+            <div class="book-cover-wrap">
+                {% if libro.portada %}
+                <img src="{{ libro.portada.url }}" class="book-cover-img" alt="{{ libro.titulo }}" loading="lazy">
+                {% else %}
+                <div class="book-cover-placeholder">
+                    <i class="bi bi-journal-bookmark fs-1 mb-2 opacity-50" style="color: var(--color-forest);"></i>
+                    <span class="small text-muted font-serif">{{ libro.editorial }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Información -->
+            <div class="card-body p-3 d-flex flex-column">
+                <span class="book-category-tag">{{ libro.categoria.nombre|default:"General" }}</span>
+                <h2 class="book-title">{{ libro.titulo|truncatechars:48 }}</h2>
+                <div class="book-author">
+                    {% if libro.autores.all %}
+                        {{ libro.autores.all|join:", " }}
+                    {% else %}
+                        Autor no especificado
+                    {% endif %}
+                </div>
+
+                <div class="mt-auto pt-2 d-flex justify-content-between align-items-center border-top" style="border-color: var(--color-border-subtle) !important;">
+                    {% if libro.ejemplares_disponibles > 0 %}
+                    <span class="badge-status badge-disponible">
+                        <i class="bi bi-check2"></i> {{ libro.ejemplares_disponibles }} disp.
+                    </span>
+                    {% else %}
+                    <span class="badge-status badge-perdido">
+                        Agotado
+                    </span>
+                    {% endif %}
+
+                    <a href="{% url 'catalogos:libro_detail' libro.pk %}" class="btn btn-sm btn-outline-forest px-3" style="font-size: 0.8rem;">
+                        Ver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 py-5 text-center">
+        <div class="p-5 rounded-4" style="background: var(--color-surface); border: 1px dashed var(--color-border);">
+            <i class="bi bi-search fs-1 opacity-25 d-block mb-3" style="color: var(--color-text-secondary);"></i>
+            <h4 class="font-serif">No se encontraron libros</h4>
+            <p class="text-muted small">Intenta con otros términos de búsqueda o selecciona otra categoría.</p>
+            {% if query or categoria_id or disponible %}
+            <a href="{% url 'catalogos:libro_list' %}" class="btn btn-outline-forest btn-sm mt-2">Restablecer filtros</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

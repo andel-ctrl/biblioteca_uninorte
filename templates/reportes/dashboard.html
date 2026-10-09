@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard & Métricas — Biblioteca{% endblock %}
+{% block content %}
+
+<!-- ENCABEZADO -->
+<div class="mb-4 pt-2">
+    <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Panel Administrativo</span>
+    <h1 class="display-6 fw-bold mb-1">Métricas & Operaciones</h1>
+    <p class="text-muted mb-0">Resumen en tiempo real del catálogo, estado de ejemplares y flujo de préstamos.</p>
+</div>
+
+<!-- KPIs FILA PRINCIPAL -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div>
+                <div class="kpi-number">{{ total_libros }}</div>
+                <div class="kpi-label">Títulos en Catálogo</div>
+            </div>
+            <div class="kpi-icon-wrap kpi-icon-forest">
+                <i class="bi bi-journals"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div>
+                <div class="kpi-number text-success" style="color: var(--color-forest) !important;">{{ disponibles }}</div>
+                <div class="kpi-label">Copias Disponibles</div>
+            </div>
+            <div class="kpi-icon-wrap kpi-icon-forest">
+                <i class="bi bi-check-circle"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div>
+                <div class="kpi-number" style="color: var(--color-amber) !important;">{{ prestados }}</div>
+                <div class="kpi-label">Ejemplares Prestados</div>
+            </div>
+            <div class="kpi-icon-wrap kpi-icon-amber">
+                <i class="bi bi-arrow-left-right"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div>
+                <div class="kpi-number" style="color: var(--color-clay) !important;">{{ vencidos }}</div>
+                <div class="kpi-label">Préstamos en Mora</div>
+            </div>
+            <div class="kpi-icon-wrap kpi-icon-clay">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SEGUNDA FILA: ALERTAS Y ACCESOS RÁPIDOS -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm h-100 d-flex flex-row justify-content-between align-items-center">
+            <div>
+                <span class="small text-muted d-block">Solicitudes en Espera</span>
+                <span class="fs-3 fw-bold font-serif" style="color: var(--color-amber);">{{ pendientes }}</span>
+            </div>
+            <a href="{% url 'prestamos:prestamo_list' %}?estado=pendiente" class="btn btn-sm btn-outline-forest">
+                Revisar solicitudes
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm h-100 d-flex flex-row justify-content-between align-items-center">
+            <div>
+                <span class="small text-muted d-block">Usuarios Registrados</span>
+                <span class="fs-3 fw-bold font-serif text-dark">{{ total_usuarios }}</span>
+            </div>
+            <a href="{% url 'usuarios:usuario_list' %}" class="btn btn-sm btn-outline-forest">
+                Gestionar
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm h-100 d-flex flex-row justify-content-between align-items-center">
+            <div>
+                <span class="small text-muted d-block">Copias Reportadas Perdidas</span>
+                <span class="fs-3 fw-bold font-serif" style="color: var(--color-clay);">{{ perdidos }}</span>
+            </div>
+            <a href="{% url 'reportes:inventario' %}" class="btn btn-sm btn-outline-forest">
+                Ver inventario
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ÚLTIMOS PRÉSTAMOS -->
+<div class="card shadow-sm mb-5">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0 font-serif">Últimos Movimientos de Préstamos</h5>
+            <small class="text-muted">Registro de solicitudes recientes realizadas por usuarios.</small>
+        </div>
+        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-sm btn-outline-forest">
+            Ver todos
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Usuario</th>
+                    <th>Obra / Libro</th>
+                    <th>Fecha Solicitud</th>
+                    <th>Estado</th>
+                    <th class="text-end">Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in ultimos_prestamos %}
+                <tr>
+                    <td class="text-muted small">#{{ p.id }}</td>
+                    <td class="fw-medium">{{ p.usuario.get_nombre_completo }}</td>
+                    <td>{{ p.ejemplar.libro.titulo|truncatechars:40 }}</td>
+                    <td class="text-muted small">{{ p.fecha_solicitud|date:"d M Y, H:i" }}</td>
+                    <td>
+                        {% if p.estado == 'pendiente' %}
+                        <span class="badge-status badge-prestado">Pendiente</span>
+                        {% elif p.estado == 'activo' %}
+                        <span class="badge-status badge-disponible">Activo</span>
+                        {% elif p.estado == 'vencido' %}
+                        <span class="badge-status badge-vencido">Vencido</span>
+                        {% elif p.estado == 'devuelto' %}
+                        <span class="badge-status badge-devuelto">Devuelto</span>
+                        {% elif p.estado == 'rechazado' %}
+                        <span class="badge-status badge-vencido">Rechazado</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if p.estado in 'activo,vencido' %}
+                        <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="btn btn-sm btn-forest py-1 px-2 me-1" style="font-size: 0.78rem;" title="Registrar devolución rápida">
+                            <i class="bi bi-arrow-return-left me-1"></i> Devolver
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="btn btn-sm btn-outline-forest py-1 px-3" style="font-size: 0.8rem;">
+                            Ver
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        No hay movimientos de préstamo registrados recientemente.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

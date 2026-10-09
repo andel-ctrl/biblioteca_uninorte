@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Rechazar Préstamo{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white"><i class="bi bi-x-circle me-2"></i>Rechazar Préstamo #{{ prestamo.pk }}</div>
+            <div class="card-body">
+                <div class="alert alert-light border">
+                    <strong>Usuario:</strong> {{ prestamo.usuario.get_nombre_completo }}<br>
+                    <strong>Libro:</strong> {{ prestamo.ejemplar.libro.titulo }}<br>
+                    <strong>Solicitud:</strong> {{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}
+                </div>
+                <form method="post" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg me-1"></i>Rechazar</button>
+                    <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
