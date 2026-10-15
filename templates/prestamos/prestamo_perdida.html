@@ -1,37 +1,21 @@
-{% extends 'base.html' %}
-{% block title %}Reportar pérdida — Préstamo #{{ prestamo.pk }}{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white"><i class="bi bi-exclamation-octagon me-2"></i>Reportar pérdida — Préstamo #{{ prestamo.pk }}</div>
-            <div class="card-body">
-                <div class="alert alert-light border">
-                    <strong>Usuario:</strong> {{ prestamo.usuario.get_nombre_completo }}<br>
-                    <strong>Libro:</strong> {{ prestamo.ejemplar.libro.titulo }}<br>
-                    <strong>Ejemplar:</strong> <code>{{ prestamo.ejemplar.codigo_barras }}</code><br>
-                    <strong>Vencimiento:</strong> {{ prestamo.fecha_vencimiento|date:"d/m/Y" }}
-                </div>
-                <p>Al confirmar:</p>
-                <ul class="small">
-                    <li>El préstamo se cerrará con estado <strong>Perdido</strong>.</li>
-                    <li>El ejemplar quedará como <strong>Perdido</strong> en el inventario.</li>
-                    <li>
-                        {% if multa_estimada > 0 %}
-                        Se registrará una multa de <strong>${{ multa_estimada }}</strong> por {{ prestamo.dias_retraso }} día(s) de retraso.
-                        {% else %}
-                        No hay días de retraso, por lo que no se registrará multa.
-                        {% endif %}
-                    </li>
-                </ul>
-                <p class="text-muted small">Si el ejemplar aparece después, edítelo desde el detalle del libro y márquelo como disponible.</p>
-                <form method="post" class="d-flex gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-exclamation-octagon me-1"></i>Confirmar pérdida</button>
-                    <a href="{% url 'prestamos:prestamo_detail' prestamo.pk %}" class="btn btn-outline-secondary">Cancelar</a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% load biblioteca_ui %}
+{% block title %}Reportar pérdida — Biblioteca{% endblock %}
+{% block tono %}peligro{% endblock %}
+{% block ref %}Préstamo {{ prestamo.pk|stringformat:"04d" }}{% endblock %}
+{% block titulo %}¿Reportar la <em>pérdida</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ prestamo.ejemplar.libro.titulo }}</dd></div>
+<div><dt>Ejemplar</dt><dd class="mono">{{ prestamo.ejemplar.codigo_barras }}</dd></div>
+<div><dt>Lector</dt><dd>{{ prestamo.usuario.get_nombre_completo }} <span class="mono">({{ prestamo.usuario.codigo_universitario }})</span></dd></div>
+<div><dt>Vencimiento</dt><dd class="cifra">{{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>El préstamo se cierra con estado <strong>perdido</strong>.</li>
+<li>El ejemplar queda como <strong>perdido</strong> en el inventario.</li>
+<li>{% if multa_estimada > 0 %}Se registra una multa de <strong>{{ multa_estimada|pesos }}</strong> por {{ prestamo.dias_retraso }} día{{ prestamo.dias_retraso|pluralize }} de retraso.{% else %}No hay días de retraso, así que no se registra multa.{% endif %}</li>
+<li>Si el ejemplar aparece después, edítalo desde la ficha del libro y márcalo como disponible.</li>
+{% endblock %}
+{% block boton_clase %}btn-danger{% endblock %}
+{% block boton %}Sí, reportar la pérdida{% endblock %}
+{% block cancelar_url %}{% url 'prestamos:prestamo_detail' prestamo.pk %}{% endblock %}

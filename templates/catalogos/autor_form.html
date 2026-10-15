@@ -1,29 +1,17 @@
-{% extends 'base.html' %}
-{% block title %}Nuevo autor{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold"><i class="bi bi-person-plus me-2"></i>Nuevo autor</div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                        <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
-                        <a href="{% url 'catalogos:autor_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_formulario.html' %}
+{% block title %}{% if autor %}Editar autor{% else %}Nuevo autor{% endif %} — Biblioteca{% endblock %}
+{% block ref %}{% if autor %}Ficha de {{ autor }}{% else %}Registro de autores{% endif %}{% endblock %}
+{% block titulo %}{% if autor %}Editar <em>autor</em>{% else %}Nuevo <em>autor</em>{% endif %}{% endblock %}
+{% block bajada %}{% if autor %}El cambio se verá en todos los libros de este autor.{% else %}Después podrás asociarlo a uno o varios libros desde el formulario del libro.{% endif %}{% endblock %}
+{% block notas %}
+<h2>Cómo se muestra</h2>
+<p>En el catálogo los autores aparecen como <strong>Apellido, Nombre</strong>.</p>
+{% if autor %}<p>Corregir aquí un nombre mal escrito lo corrige en <strong>todos sus libros</strong> a la vez.</p>{% endif %}
 {% endblock %}
+{% block campos %}
+{% include 'componentes/_campo.html' with field=form.nombre %}
+{% include 'componentes/_campo.html' with field=form.apellido %}
+{% include 'componentes/_campo.html' with field=form.biografia %}
+{% endblock %}
+{% block boton %}{% if autor %}Guardar cambios{% else %}Registrar autor{% endif %}{% endblock %}
+{% block cancelar_url %}{% url 'catalogos:autor_list' %}{% endblock %}

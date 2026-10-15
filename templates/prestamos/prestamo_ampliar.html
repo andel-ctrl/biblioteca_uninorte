@@ -1,0 +1,20 @@
+{% extends 'componentes/base_confirmacion.html' %}
+{% block title %}Ampliar plazo — Biblioteca{% endblock %}
+{% block ref %}Préstamo {{ prestamo.pk|stringformat:"04d" }} · ejemplar {{ prestamo.ejemplar.codigo_barras }}{% endblock %}
+{% block titulo %}Ampliar <em>plazo</em>{% endblock %}
+{% block resumen %}
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ prestamo.ejemplar.libro.titulo }}</dd></div>
+<div><dt>Lector</dt><dd>{{ prestamo.usuario.get_nombre_completo }} <span class="mono">({{ prestamo.usuario.codigo_universitario }})</span></dd></div>
+<div><dt>Prestado</dt><dd class="cifra">{{ prestamo.fecha_prestamo|date:"d/m/Y" }}</dd></div>
+<div><dt>Vencimiento actual</dt><dd class="cifra">{{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</dd></div>
+{% endblock %}
+{% block consecuencias %}
+<li>Solo cambia la <strong>fecha de vencimiento</strong>; el ejemplar sigue prestado al mismo lector.</li>
+<li>El cambio queda anotado en el historial del préstamo, con tu nombre y la fecha.</li>
+{% endblock %}
+{% block campos %}
+{% include 'componentes/_campo.html' with field=form.fecha_vencimiento %}
+<div class="mb-2"></div>
+{% endblock %}
+{% block boton %}<i class="bi bi-calendar-plus" aria-hidden="true"></i> Ampliar plazo{% endblock %}
+{% block cancelar_url %}{% url 'prestamos:prestamo_detail' prestamo.pk %}{% endblock %}

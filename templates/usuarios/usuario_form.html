@@ -1,30 +1,18 @@
-{% extends 'base.html' %}
-{% block title %}{{ titulo|default:"Usuario" }}{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold">
-                <i class="bi bi-person me-2"></i>{{ titulo|default:"Usuario" }}
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                        <a href="{% if usuario %}{% url 'usuarios:usuario_detail' usuario.pk %}{% else %}{% url 'usuarios:usuario_list' %}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_formulario.html' %}
+{% block title %}{{ titulo|default:"Usuario" }} — Biblioteca{% endblock %}
+{% block ref %}{% if usuario %}Ficha {{ usuario.codigo_universitario }}{% else %}Nuevo registro{% endif %}{% endblock %}
+{% block titulo %}{% if usuario %}Editar <em>usuario</em>{% else %}Nuevo <em>usuario</em>{% endif %}{% endblock %}
+{% block bajada %}{% if usuario %}Datos de {{ usuario.get_nombre_completo }}.{% else %}Crea la cuenta y la ficha de un lector o de un miembro del personal.{% endif %}{% endblock %}
+
+{% block notas %}
+<h2>Antes de guardar</h2>
+<ul>
+    <li>El <strong>código</strong>, la <strong>identificación</strong>, el <strong>usuario</strong> y el <strong>correo</strong> no pueden repetirse.</li>
+    <li>La contraseña debe tener al menos 8 caracteres, no ser común ni solo números.</li>
+    <li>Un usuario <strong>bloqueado</strong> puede entrar y ver el catálogo, pero no solicitar préstamos.</li>
+    {% if usuario %}<li>Deja la nueva contraseña vacía para conservar la actual.</li>{% endif %}
+</ul>
 {% endblock %}
+
+{% block boton %}{% if usuario %}Guardar cambios{% else %}Crear usuario{% endif %}{% endblock %}
+{% block cancelar_url %}{% if usuario %}{% url 'usuarios:usuario_detail' usuario.pk %}{% else %}{% url 'usuarios:usuario_list' %}{% endif %}{% endblock %}

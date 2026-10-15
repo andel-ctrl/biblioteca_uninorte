@@ -1,222 +1,109 @@
 {% extends 'base.html' %}
-{% block title %}Detalle del Préstamo #{{ prestamo.pk }} — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Préstamo {{ prestamo.pk|stringformat:"04d" }} — Biblioteca{% endblock %}
 {% block content %}
 
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb small">
-        {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-        <li class="breadcrumb-item"><a href="{% url 'prestamos:prestamo_list' %}" class="text-decoration-none text-muted">Préstamos</a></li>
-        {% else %}
-        <li class="breadcrumb-item"><a href="{% url 'usuarios:mi_historial' %}" class="text-decoration-none text-muted">Mis Préstamos</a></li>
-        {% endif %}
-        <li class="breadcrumb-item active font-serif">Préstamo #{{ prestamo.pk }}</li>
-    </ol>
+<nav class="miga" aria-label="Ruta de navegación">
+    {% if es_bibliotecario %}<a href="{% url 'prestamos:prestamo_list' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Préstamos</a>
+    {% else %}<a href="{% url 'usuarios:mi_historial' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Mis préstamos</a>{% endif %}
 </nav>
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Registro Oficial</span>
-        <h1 class="display-6 fw-bold mb-1">Préstamo #{{ prestamo.pk }}</h1>
-        <p class="text-muted mb-0">Detalles de la solicitud, fechas límite y estado del ejemplar.</p>
+        <p class="encabezado__ref">Préstamo {{ prestamo.pk|stringformat:"04d" }} · ejemplar {{ prestamo.ejemplar.codigo_barras }}</p>
+        <h1 class="encabezado__titulo"><a class="encabezado__enlace" href="{% url 'catalogos:libro_detail' prestamo.ejemplar.libro.pk %}">{{ prestamo.ejemplar.libro.titulo }}</a></h1>
+        <p class="encabezado__bajada">Préstamo de <strong>{{ prestamo.usuario.get_nombre_completo }}</strong> <span class="mono">({{ prestamo.usuario.codigo_universitario }})</span></p>
     </div>
+    <div class="cuenta-estado">
+        <span class="cuenta-estado__etiqueta">Estado</span>
+        {% estado prestamo.estado 'prestamo' %}
+    </div>
+</header>
+{% with fecha_txt=prestamo.fecha_solicitud|date:"d/m/Y" %}{% include 'componentes/_colofon.html' with dato='Solicitado el '|add:fecha_txt %}{% endwith %}
 
-    <!-- BOTONES DE ACCIÓN PARA EL BIBLIOTECARIO -->
-    {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-    <div class="d-flex gap-2">
+<div class="detalle-prestamo">
+    <!-- Línea de vida del préstamo con fechas reales -->
+    <ol class="linea-vida" aria-label="Recorrido del préstamo">
+        <li class="linea-vida__paso is-hecho">
+            <span class="linea-vida__fecha">{{ prestamo.fecha_solicitud|date:"d/m/Y · H:i" }}</span>
+            <strong>Solicitado</strong>
+            <span>por {{ prestamo.usuario.get_nombre_completo }}</span>
+        </li>
+
         {% if prestamo.estado == 'pendiente' %}
-        <a href="{% url 'prestamos:prestamo_aprobar' prestamo.pk %}" class="btn btn-forest">
-            <i class="bi bi-check2-circle me-1"></i> Aprobar Préstamo
-        </a>
-        <a href="{% url 'prestamos:prestamo_rechazar' prestamo.pk %}" class="btn btn-outline-danger">
-            <i class="bi bi-x-circle me-1"></i> Rechazar
-        </a>
-        {% elif prestamo.estado in 'activo,vencido' %}
-        <a href="{% url 'prestamos:devolucion_registrar' prestamo.pk %}" class="btn btn-forest shadow-sm">
-            <i class="bi bi-arrow-return-left me-1"></i> Registrar Devolución
-        </a>
-        <a href="{% url 'prestamos:prestamo_reportar_perdida' prestamo.pk %}" class="btn btn-outline-danger">
-            <i class="bi bi-exclamation-octagon me-1"></i> Reportar pérdida
-        </a>
-        {% endif %}
-    </div>
-    {% endif %}
-</div>
-
-<div class="row g-4 mb-5">
-    <div class="col-md-7">
-        <div class="card p-4 shadow-sm h-100">
-            <h5 class="font-serif mb-3 border-bottom pb-2" style="border-color: var(--color-border-subtle) !important;">
-                Información del Préstamo
-            </h5>
-            <table class="table table-sm mb-0">
-                <tr>
-                    <th class="text-muted fw-normal" style="width: 35%;">Lector / Usuario</th>
-                    <td class="fw-semibold">{{ prestamo.usuario.get_nombre_completo }}</td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Código Universitario</th>
-                    <td><span class="font-monospace small">{{ prestamo.usuario.codigo_universitario }}</span></td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Título de la Obra</th>
-                    <td class="font-serif fw-semibold">
-                        <a href="{% url 'catalogos:libro_detail' prestamo.ejemplar.libro.pk %}" class="text-decoration-none text-dark">
-                            {{ prestamo.ejemplar.libro.titulo }}
-                        </a>
-                    </td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Ejemplar Físico</th>
-                    <td>
-                        <code class="text-dark bg-light px-2 py-1 rounded">{{ prestamo.ejemplar.codigo_barras }}</code>
-                        <span class="text-muted small ms-2">({{ prestamo.ejemplar.ubicacion }})</span>
-                    </td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Fecha de Solicitud</th>
-                    <td class="text-muted">{{ prestamo.fecha_solicitud|date:"d M Y, H:i" }}</td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Fecha de Préstamo</th>
-                    <td>{{ prestamo.fecha_prestamo|date:"d M Y"|default:"—" }}</td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Fecha de Vencimiento</th>
-                    <td>
-                        {% if prestamo.fecha_vencimiento %}
-                        <span class="{% if prestamo.estado == 'vencido' %}text-danger fw-bold{% endif %}">
-                            {{ prestamo.fecha_vencimiento|date:"d M Y" }}
-                        </span>
-                        {% else %}—{% endif %}
-                    </td>
-                </tr>
-                <tr>
-                    <th class="text-muted fw-normal">Estado Actual</th>
-                    <td>
-                        {% if prestamo.estado == 'pendiente' %}
-                        <span class="badge-status badge-prestado">Pendiente de aprobación</span>
-                        {% elif prestamo.estado == 'activo' %}
-                        <span class="badge-status badge-disponible">Activo (en préstamo)</span>
-                        {% elif prestamo.estado == 'vencido' %}
-                        <span class="badge-status badge-vencido">Vencido (en mora)</span>
-                        {% elif prestamo.estado == 'devuelto' %}
-                        <span class="badge-status badge-devuelto">Devuelto</span>
-                        {% elif prestamo.estado == 'rechazado' %}
-                        <span class="badge-status badge-vencido">Rechazado</span>
-                        {% elif prestamo.estado == 'perdido' %}
-                        <span class="badge-status badge-perdido">Perdido</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% if prestamo.aprobado_por %}
-                <tr>
-                    <th class="text-muted fw-normal">Aprobado Por</th>
-                    <td class="text-muted small">{{ prestamo.aprobado_por.get_nombre_completo }}</td>
-                </tr>
-                {% endif %}
-            </table>
-        </div>
-    </div>
-
-    <!-- PANEL DE DEVOLUCIÓN O ESTADO -->
-    <div class="col-md-5">
-        {% if prestamo.devolucion %}
-        <div class="card p-4 shadow-sm h-100" style="background: var(--color-forest-subtle); border-color: #D2DFD2;">
-            <div class="d-flex align-items-center gap-2 mb-3">
-                {% if prestamo.estado == 'perdido' %}
-                <i class="bi bi-exclamation-octagon-fill text-danger fs-4"></i>
-                <h5 class="font-serif mb-0 text-danger">Pérdida Registrada</h5>
-                {% else %}
-                <i class="bi bi-check-circle-fill text-success fs-4"></i>
-                <h5 class="font-serif mb-0 text-success">Devolución Registrada</h5>
-                {% endif %}
-            </div>
-            <p class="small text-muted mb-3">
-                {% if prestamo.estado == 'perdido' %}
-                El ejemplar fue reportado como perdido y no está en circulación.
-                {% else %}
-                Este ejemplar ya fue entregado. Estado actual del ejemplar: <strong>{{ prestamo.ejemplar.get_estado_display }}</strong>.
-                {% endif %}
-            </p>
-            <table class="table table-sm mb-0">
-                <tr>
-                    <th class="fw-normal text-muted">{% if prestamo.estado == 'perdido' %}Fecha del Reporte{% else %}Fecha de Devolución{% endif %}</th>
-                    <td class="fw-semibold">{{ prestamo.devolucion.fecha_devolucion|date:"d M Y" }}</td>
-                </tr>
-                <tr>
-                    <th class="fw-normal text-muted">Estado del Libro</th>
-                    <td>{{ prestamo.devolucion.get_observacion_display|default:"En buen estado" }}</td>
-                </tr>
-                <tr>
-                    <th class="fw-normal text-muted">Monto de Multa</th>
-                    <td>
-                        {% if prestamo.devolucion.monto_multa > 0 %}
-                        <span class="text-danger fw-bold">${{ prestamo.devolucion.monto_multa }}</span>
-                        {% else %}
-                        <span class="text-success">$0 (Sin multa)</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                <tr>
-                    <th class="fw-normal text-muted">Multa Pagada</th>
-                    <td>
-                        {% if prestamo.devolucion.multa_pagada %}
-                        <span class="badge-status badge-disponible">Sí, saldada</span>
-                        {% else %}
-                        <span class="badge-status badge-vencido">Pendiente de pago</span>
-                        {% endif %}
-                    </td>
-                </tr>
-            </table>
-        </div>
-        {% elif prestamo.estado in 'activo,vencido' %}
-        <div class="card p-4 shadow-sm h-100 text-center d-flex flex-column justify-content-center align-items-center">
-            <div class="kpi-icon-wrap kpi-icon-amber mb-3">
-                <i class="bi bi-hourglass-split fs-4"></i>
-            </div>
-            <h5 class="font-serif mb-2">Préstamo en Curso</h5>
-            <p class="text-muted small mb-3">
-                El ejemplar <code>{{ prestamo.ejemplar.codigo_barras }}</code> está en posesión de <strong>{{ prestamo.usuario.get_nombre_completo }}</strong>.
-            </p>
-            {% if prestamo.esta_vencido %}
-            <div class="alert alert-danger py-2 small mb-3 w-100">
-                <i class="bi bi-exclamation-triangle me-1"></i> Préstamo con retraso. Multa acumulada: <strong>${{ prestamo.multa_estimada }}</strong>
-            </div>
-            {% endif %}
-
-            {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-            <a href="{% url 'prestamos:devolucion_registrar' prestamo.pk %}" class="btn btn-forest w-100">
-                <i class="bi bi-arrow-return-left me-1"></i> Registrar Devolución Ahora
-            </a>
-            <a href="{% url 'prestamos:prestamo_reportar_perdida' prestamo.pk %}" class="btn btn-link text-danger w-100 mt-2 small">
-                Reportar pérdida del ejemplar
-            </a>
-            {% endif %}
-        </div>
+        <li class="linea-vida__paso is-actual">
+            <span class="linea-vida__fecha">Ahora</span>
+            <strong>Esperando aprobación</strong>
+            <span>El personal de la biblioteca revisa la solicitud.</span>
+        </li>
+        {% elif prestamo.estado == 'rechazado' %}
+        <li class="linea-vida__paso is-hecho is-cerrado">
+            <span class="linea-vida__fecha">Cerrado</span>
+            <strong>Solicitud rechazada</strong>
+            {% if prestamo.aprobado_por %}<span>por {{ prestamo.aprobado_por.get_nombre_completo }}</span>{% endif %}
+        </li>
         {% else %}
-        <div class="card p-4 shadow-sm h-100 text-center d-flex flex-column justify-content-center align-items-center">
-            <div class="kpi-icon-wrap kpi-icon-forest mb-3">
-                <i class="bi bi-bookmark-check fs-4"></i>
-            </div>
-            <h5 class="font-serif mb-2">Solicitud {{ prestamo.get_estado_display }}</h5>
-            <p class="text-muted small mb-0">
-                {% if prestamo.estado == 'pendiente' %}
-                Esta solicitud está a la espera de que el personal de biblioteca la apruebe.
-                {% else %}
-                Solicitud procesada con estado: {{ prestamo.get_estado_display }}.
-                {% endif %}
-            </p>
+        <li class="linea-vida__paso is-hecho">
+            <span class="linea-vida__fecha">{{ prestamo.fecha_prestamo|date:"d/m/Y" }}</span>
+            <strong>Prestado</strong>
+            <span>{% if prestamo.aprobado_por %}aprobado por {{ prestamo.aprobado_por.get_nombre_completo }}{% else %}préstamo aprobado{% endif %}</span>
+        </li>
+        <li class="linea-vida__paso {% if prestamo.estado == 'activo' %}is-actual{% elif prestamo.estado == 'vencido' %}is-alerta{% else %}is-hecho{% endif %}">
+            <span class="linea-vida__fecha">{{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</span>
+            <strong>{% if prestamo.estado == 'vencido' %}Venció{% else %}Vencimiento{% endif %}</strong>
+            <span>
+                {% if prestamo.estado == 'vencido' %}{{ prestamo.dias_retraso }} día{{ prestamo.dias_retraso|pluralize }} de retraso · mora acumulada {{ prestamo.multa_estimada|pesos }}
+                {% elif prestamo.estado == 'activo' %}{{ prestamo.fecha_vencimiento|faltan }}
+                {% else %}fecha límite de devolución{% endif %}
+            </span>
+        </li>
+        {% if prestamo.devolucion %}
+        <li class="linea-vida__paso is-hecho is-cerrado {% if prestamo.estado == 'perdido' %}is-alerta{% endif %}">
+            <span class="linea-vida__fecha">{{ prestamo.devolucion.fecha_devolucion|date:"d/m/Y" }}</span>
+            <strong>{% if prestamo.estado == 'perdido' %}Pérdida registrada{% else %}Devuelto{% endif %}</strong>
+            <span>{% if prestamo.devolucion.registrado_por %}registrado por {{ prestamo.devolucion.registrado_por.get_nombre_completo }}{% endif %}</span>
+        </li>
+        {% else %}
+        <li class="linea-vida__paso">
+            <span class="linea-vida__fecha">Pendiente</span>
+            <strong>Devolución</strong>
+            <span>El ejemplar vuelve a la biblioteca.</span>
+        </li>
+        {% endif %}
+        {% endif %}
+    </ol>
+
+    <!-- Datos y acciones -->
+    <aside class="detalle-prestamo__lado">
+        <dl class="libro-mayor__lista">
+            <div><dt>Ejemplar</dt><dd class="mono">{{ prestamo.ejemplar.codigo_barras }}</dd></div>
+            <div><dt>Ubicación</dt><dd>{{ prestamo.ejemplar.ubicacion }}</dd></div>
+            <div><dt>Estado del ejemplar</dt><dd>{% estado prestamo.ejemplar.estado 'ejemplar' %}</dd></div>
+            {% if prestamo.devolucion %}
+            <div><dt>Observación</dt><dd>{{ prestamo.devolucion.get_observacion_display|default:"En buen estado" }}</dd></div>
+            <div><dt>Multa</dt><dd class="cifra">{% if prestamo.devolucion.monto_multa > 0 %}{{ prestamo.devolucion.monto_multa|pesos }}{% else %}Sin multa{% endif %}</dd></div>
+            {% if prestamo.devolucion.monto_multa > 0 %}
+            <div><dt>Pago</dt><dd>{% if prestamo.devolucion.multa_pagada %}{% estado 'pagada' 'multa' 'Pagada' %}{% else %}{% estado 'pendiente' 'multa' 'Por pagar' %}{% endif %}</dd></div>
+            {% endif %}
+            {% endif %}
+        </dl>
+        {% if prestamo.devolucion.detalle_observacion %}<p class="detalle-prestamo__nota">«{{ prestamo.devolucion.detalle_observacion }}»</p>{% endif %}
+        {% if prestamo.observaciones %}<p class="detalle-prestamo__nota detalle-prestamo__nota--registro"><i class="bi bi-journal-text" aria-hidden="true"></i> <span>{{ prestamo.observaciones|linebreaksbr }}</span></p>{% endif %}
+
+        {% if es_bibliotecario %}
+        <div class="detalle-prestamo__acciones">
+            {% if prestamo.estado == 'pendiente' %}
+            <a href="{% url 'prestamos:prestamo_aprobar' prestamo.pk %}" class="btn btn-primary"><i class="bi bi-check2" aria-hidden="true"></i> Aprobar préstamo</a>
+            <a href="{% url 'prestamos:prestamo_rechazar' prestamo.pk %}" class="btn btn-outline-danger"><i class="bi bi-x" aria-hidden="true"></i> Rechazar</a>
+            {% elif prestamo.estado == 'activo' or prestamo.estado == 'vencido' %}
+            <a href="{% url 'prestamos:devolucion_registrar' prestamo.pk %}" class="btn btn-primary"><i class="bi bi-arrow-return-left" aria-hidden="true"></i> Registrar devolución</a>
+            {% if prestamo.puede_ampliarse %}<a href="{% url 'prestamos:prestamo_ampliar' prestamo.pk %}" class="btn btn-outline-secondary"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Ampliar plazo</a>{% endif %}
+            <a href="{% url 'prestamos:prestamo_reportar_perdida' prestamo.pk %}" class="btn btn-link">Reportar pérdida del ejemplar</a>
+            {% elif prestamo.devolucion and prestamo.devolucion.monto_multa > 0 and not prestamo.devolucion.multa_pagada %}
+            <a href="{% url 'prestamos:multa_pagar' prestamo.pk %}" class="btn btn-primary"><i class="bi bi-cash-coin" aria-hidden="true"></i> Registrar pago de la multa</a>
+            {% endif %}
         </div>
         {% endif %}
-    </div>
+    </aside>
 </div>
-
-<div class="mt-3">
-    {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-    <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-forest"><i class="bi bi-arrow-left me-1"></i> Volver a préstamos</a>
-    {% else %}
-    <a href="{% url 'usuarios:mi_historial' %}" class="btn btn-outline-forest"><i class="bi bi-arrow-left me-1"></i> Volver a mis préstamos</a>
-    {% endif %}
-</div>
-
 {% endblock %}

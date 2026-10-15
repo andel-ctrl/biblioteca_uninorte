@@ -1,35 +1,20 @@
-{% extends 'base.html' %}
-{% block title %}Aprobar Préstamo #{{ prestamo.pk }}{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-success">
-            <div class="card-header bg-success text-white"><i class="bi bi-check-circle me-2"></i>Aprobar Préstamo #{{ prestamo.pk }}</div>
-            <div class="card-body">
-                <div class="alert alert-light border">
-                    <strong>Usuario:</strong> {{ prestamo.usuario.get_nombre_completo }}<br>
-                    <strong>Libro:</strong> {{ prestamo.ejemplar.libro.titulo }}<br>
-                    <strong>Ejemplar:</strong> <code>{{ prestamo.ejemplar.codigo_barras }}</code><br>
-                    <strong>Solicitud:</strong> {{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}
-                </div>
-                <p class="text-muted small">Al aprobar, el ejemplar se marcará como <em>prestado</em>. La fecha de préstamo será hoy ({% now "d/m/Y" %}).</p>
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" for="{{ form.fecha_vencimiento.id_for_label }}">{{ form.fecha_vencimiento.label }}</label>
-                        {{ form.fecha_vencimiento }}
-                        <div class="form-text">{{ form.fecha_vencimiento.help_text }}</div>
-                        {% if form.fecha_vencimiento.errors %}
-                        <div class="invalid-feedback d-block">{{ form.fecha_vencimiento.errors.0 }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Aprobar</button>
-                        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% block title %}Aprobar préstamo — Biblioteca{% endblock %}
+{% block ref %}Solicitud {{ prestamo.pk|stringformat:"04d" }}{% endblock %}
+{% block titulo %}Aprobar <em>préstamo</em>{% endblock %}
+{% block resumen %}
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ prestamo.ejemplar.libro.titulo }}</dd></div>
+<div><dt>Ejemplar</dt><dd class="mono">{{ prestamo.ejemplar.codigo_barras }} · {{ prestamo.ejemplar.ubicacion }}</dd></div>
+<div><dt>Lector</dt><dd>{{ prestamo.usuario.get_nombre_completo }} <span class="mono">({{ prestamo.usuario.codigo_universitario }})</span></dd></div>
+<div><dt>Solicitado</dt><dd class="cifra">{{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>La fecha de préstamo será <strong>hoy, {% now "d/m/Y" %}</strong>.</li>
+<li>El ejemplar pasará a estado <strong>prestado</strong>.</li>
+{% endblock %}
+{% block campos %}
+{% include 'componentes/_campo.html' with field=form.fecha_vencimiento %}
+<div class="mb-2"></div>
+{% endblock %}
+{% block boton %}<i class="bi bi-check2" aria-hidden="true"></i> Aprobar préstamo{% endblock %}
+{% block cancelar_url %}{% url 'prestamos:prestamo_list' %}{% endblock %}

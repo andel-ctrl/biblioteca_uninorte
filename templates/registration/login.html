@@ -7,28 +7,31 @@
 <div class="acceso">
     <!-- Panel visual: fotografía con tipografía editorial -->
     <section class="acceso__visual" aria-hidden="true">
-        <picture>
-            <source srcset="{% static 'img/biblioteca-rotonda-1400.webp' %}" type="image/webp">
-            <img src="{% static 'img/biblioteca-rotonda-1400.jpg' %}" alt="" class="acceso__foto" fetchpriority="high">
-        </picture>
-        <svg class="acceso__arco" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet" focusable="false">
-            <path d="M60 470 A270 270 0 0 1 270 205" />
-            <path d="M330 205 A270 270 0 0 1 540 470" />
-            <path class="acceso__arco-estrella" d="M300 130 C303 160 309 170 340 174 C309 178 303 190 300 220 C297 190 291 178 260 174 C291 170 297 160 300 130 Z"/>
-        </svg>
+        <img src="{% static 'img/biblioteca-uninorte-interior.jpg' %}" alt="" class="acceso__foto" fetchpriority="high">
         <div class="acceso__texto">
-            <span class="marca__placa acceso__logo">{% include 'componentes/_logo.html' %}</span>
+            <span class="acceso__logo">{% include 'componentes/_logo.html' %}</span>
             <p class="acceso__signatura">Biblioteca Universitaria · Préstamos</p>
             <h2 class="acceso__lema">El archivo<br><em>sigue vivo.</em></h2>
             <p class="acceso__bajada">Busca, solicita y sigue tus préstamos desde un solo lugar.</p>
         </div>
-        <p class="acceso__credito">Foto: Patrik Göthe · Unsplash</p>
+        <p class="acceso__credito">Biblioteca Karl C. Parrish Jr.</p>
     </section>
+
+    <!-- Líneas que serpentean en el lado claro: dejan una estrella y se desvanecen (decorativo) -->
+    <div class="acceso__lineas" aria-hidden="true">
+        <svg viewBox="0 0 600 1000" preserveAspectRatio="xMidYMid slice" focusable="false">
+            <g class="trazo trazo--borgona" style="--retraso: 0s"><path class="trazo__linea" pathLength="1" d="M-40 140 C110 40 200 300 300 230 C400 160 470 20 640 120"/><path class="trazo__estrella" transform="translate(289 219) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
+            <g class="trazo trazo--dorado" style="--retraso: 2.2s"><path class="trazo__linea" pathLength="1" d="M-40 470 C80 380 220 600 330 520 C440 440 520 640 640 560"/><path class="trazo__estrella" transform="translate(319 509) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
+            <g class="trazo trazo--rosa" style="--retraso: 4.4s"><path class="trazo__linea" pathLength="1" d="M640 300 C520 260 470 430 360 400 C250 370 150 280 -40 340"/><path class="trazo__estrella" transform="translate(349 389) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
+            <g class="trazo trazo--tinta" style="--retraso: 6.6s"><path class="trazo__linea" pathLength="1" d="M-40 820 C120 760 180 930 300 860 C420 790 520 900 640 830"/><path class="trazo__estrella" transform="translate(289 849) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
+            <g class="trazo trazo--borgona" style="--retraso: 8.8s"><path class="trazo__linea" pathLength="1" d="M640 690 C540 650 520 760 420 740 C320 720 230 640 -40 700"/><path class="trazo__estrella" transform="translate(409 729) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
+        </svg>
+    </div>
 
     <!-- Formulario -->
     <section class="acceso__panel">
         <span class="cinta acceso__cinta" aria-hidden="true"></span>
-        <p class="encabezado__ref"><span class="signatura">ACC</span> Acceso de lectores y personal</p>
+        <p class="encabezado__ref">Acceso de lectores y personal</p>
         <h1 class="acceso__titulo">Inicia <em>sesión</em></h1>
         <p class="acceso__ayuda">Usa el usuario y la contraseña que te entregó la biblioteca.</p>
 

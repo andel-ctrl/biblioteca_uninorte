@@ -2,11 +2,12 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils import timezone
-from apps.prestamos.models import Prestamo
+from apps.prestamos.models import Prestamo, Devolucion
 from apps.catalogos.models import Libro, Ejemplar
 from apps.usuarios.models import UsuarioBiblioteca
 from apps.usuarios.decorators import bibliotecario_required
 import datetime
+from apps.catalogos.formato import formato_pesos
 
 
 def _rango_fechas(request, dias_defecto=None):
@@ -52,34 +53,74 @@ def _filtro_prestados(prefijo, desde, hasta):
 
 @bibliotecario_required
 def dashboard(request):
+    """Mesa de trabajo: lo que requiere acción primero, con acceso directo a cada tarea."""
     Prestamo.actualizar_vencidos()
+    hoy = timezone.localdate()
 
-    total_libros = Libro.objects.count()
-    total_ejemplares = Ejemplar.objects.count()
-    ejemplares_disponibles = Ejemplar.objects.filter(estado='disponible').count()
-    ejemplares_prestados = Ejemplar.objects.filter(estado='prestado').count()
-    ejemplares_perdidos = Ejemplar.objects.filter(estado='perdido').count()
+    # Bandeja: solicitudes pendientes, la más antigua primero
+    solicitudes = list(Prestamo.objects.filter(estado='pendiente')
+                       .select_related('usuario__user', 'ejemplar__libro').order_by('fecha_solicitud'))
+    for p in solicitudes:
+        # Mismas validaciones que hará la vista de aprobación, mostradas de antemano
+        r = p.usuario.restriccion_solicitudes()
+        if r and r['tipo'] == 'bloqueada':
+            p.bloqueo = 'El lector está bloqueado'
+        elif r and r['tipo'] == 'vencidos':
+            p.bloqueo = f"Tiene {r['n']} préstamo{'s' if r['n'] > 1 else ''} vencido{'s' if r['n'] > 1 else ''} sin devolver"
+        elif r:
+            p.bloqueo = f"Tiene {formato_pesos(r['monto'])} en multas sin pagar"
+        else:
+            p.bloqueo = 'El ejemplar ya no está disponible' if not p.ejemplar.esta_disponible() else ''
 
-    prestamos_pendientes = Prestamo.objects.filter(estado='pendiente').count()
+    vencidos = list(Prestamo.objects.filter(estado='vencido')
+                    .select_related('usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento'))
+    proximos = list(Prestamo.objects.filter(estado='activo', fecha_vencimiento__lte=hoy + datetime.timedelta(days=3))
+                    .select_related('usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento'))
+    for p in proximos:
+        p.dias_restantes = (p.fecha_vencimiento - hoy).days
+
+    # La colección hoy (una consulta por tabla)
+    inventario = Ejemplar.objects.aggregate(
+        total=Count('id'),
+        disponible=Count('id', filter=Q(estado='disponible')),
+        prestado=Count('id', filter=Q(estado='prestado')),
+        mantenimiento=Count('id', filter=Q(estado='mantenimiento')),
+        perdido=Count('id', filter=Q(estado='perdido')),
+    )
+    usuarios = UsuarioBiblioteca.objects.aggregate(
+        total=Count('id'), activos=Count('id', filter=Q(estado='activo')), bloqueados=Count('id', filter=Q(estado='bloqueado')),
+    )
     prestamos_activos = Prestamo.objects.filter(estado='activo').count()
-    prestamos_vencidos = Prestamo.objects.filter(estado='vencido').count()
-    total_usuarios = UsuarioBiblioteca.objects.count()
 
-    ultimos_prestamos = Prestamo.objects.select_related(
-        'usuario__user', 'ejemplar__libro'
-    ).order_by('-fecha_solicitud')[:10]
+    # Actividad reciente: solicitudes y cierres (devoluciones o pérdidas) por fecha real
+    eventos = [{'tipo': 'solicitud', 'fecha': p.fecha_solicitud, 'prestamo': p}
+               for p in Prestamo.objects.select_related('usuario__user', 'ejemplar__libro').order_by('-fecha_solicitud')[:8]]
+    eventos += [{'tipo': 'perdida' if d.observacion == 'perdido' else 'devolucion', 'fecha': d.creado_en, 'prestamo': d.prestamo, 'devolucion': d}
+                for d in Devolucion.objects.select_related('prestamo__usuario__user', 'prestamo__ejemplar__libro').order_by('-creado_en')[:8]]
+    eventos = sorted(eventos, key=lambda e: e['fecha'], reverse=True)[:8]
 
     context = {
-        'total_libros': total_libros,
-        'total_ejemplares': total_ejemplares,
-        'disponibles': ejemplares_disponibles,
-        'prestados': ejemplares_prestados,
-        'perdidos': ejemplares_perdidos,
-        'pendientes': prestamos_pendientes,
+        'hoy': hoy,
+        'solicitudes': solicitudes,
+        'vencidos_lista': vencidos,
+        'proximos': proximos,
+        'tareas': len(solicitudes) + len(vencidos) + len(proximos),
+        'atencion': len(vencidos) + len(proximos),
+        'fecha_aprobacion_defecto': hoy + datetime.timedelta(days=Prestamo.DIAS_PRESTAMO_DEFECTO),
+        'dias_defecto': Prestamo.DIAS_PRESTAMO_DEFECTO,
+        'inventario': inventario,
+        'usuarios_resumen': usuarios,
+        'eventos': eventos,
+        # Variables anteriores (se conservan por compatibilidad)
+        'total_libros': Libro.objects.count(),
+        'total_ejemplares': inventario['total'],
+        'disponibles': inventario['disponible'],
+        'prestados': inventario['prestado'],
+        'perdidos': inventario['perdido'],
+        'pendientes': len(solicitudes),
         'activos': prestamos_activos,
-        'vencidos': prestamos_vencidos,
-        'total_usuarios': total_usuarios,
-        'ultimos_prestamos': ultimos_prestamos,
+        'vencidos': len(vencidos),
+        'total_usuarios': usuarios['total'],
     }
     return render(request, 'reportes/dashboard.html', context)
 

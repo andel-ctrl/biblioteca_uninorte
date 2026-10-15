@@ -1,29 +1,27 @@
-{% extends 'base.html' %}
+{% extends 'componentes/base_formulario.html' %}
 {% block title %}Ejemplar — {{ libro.titulo }}{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold">
-                <i class="bi bi-plus-circle me-2"></i>Ejemplar de: {{ libro.titulo }}
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
-                    </div>
-                    {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                        <a href="{% url 'catalogos:libro_detail' libro.pk %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% block ref %}{{ libro.titulo }}{% endblock %}
+{% block titulo %}{% if form.instance.pk %}Editar <em>ejemplar</em>{% else %}Nuevo <em>ejemplar</em>{% endif %}{% endblock %}
+{% block bajada %}Copia física de «{{ libro.titulo }}». El estado indica si puede prestarse.{% endblock %}
+
+{% block notas %}
+<h2>Estados del ejemplar</h2>
+<ul>
+    <li><strong>Disponible:</strong> se puede solicitar.</li>
+    <li><strong>Prestado:</strong> lo asigna el sistema al aprobar un préstamo.</li>
+    <li><strong>En mantenimiento:</strong> se devolvió dañado o con páginas faltantes.</li>
+    <li><strong>Perdido:</strong> no está en circulación.</li>
+</ul>
+<p>El código de barras no puede repetirse.</p>
 {% endblock %}
+
+{% block campos %}
+{% include 'componentes/_campo.html' with field=form.codigo_barras %}
+{% include 'componentes/_campo.html' with field=form.ubicacion %}
+{% include 'componentes/_campo.html' with field=form.estado %}
+{% include 'componentes/_campo.html' with field=form.fecha_adquisicion %}
+{% include 'componentes/_campo.html' with field=form.notas %}
+{% endblock %}
+
+{% block boton %}{% if form.instance.pk %}Guardar cambios{% else %}Agregar ejemplar{% endif %}{% endblock %}
+{% block cancelar_url %}{% url 'catalogos:libro_detail' libro.pk %}{% endblock %}

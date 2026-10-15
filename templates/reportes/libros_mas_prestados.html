@@ -1,102 +1,40 @@
 {% extends 'base.html' %}
-{% block title %}Libros Más Prestados — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Libros más prestados — Biblioteca{% endblock %}
 {% block content %}
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Estadísticas & Demanda</span>
-        <h1 class="display-6 fw-bold mb-1">Libros Más Prestados</h1>
-        <p class="text-muted mb-0">Ranking de las obras con mayor circulación y lectura por período de tiempo.</p>
+        <p class="encabezado__ref">Demanda de la colección</p>
+        <h1 class="encabezado__titulo">Libros más <em>prestados</em></h1>
+        <p class="encabezado__bajada">Préstamos aprobados cuya fecha de préstamo cae en el periodo elegido.</p>
     </div>
+</header>
+{% with d=desde|date:"d/m/Y"|default:"el inicio" h=hasta|date:"d/m/Y" %}{% include 'componentes/_colofon.html' with dato='Periodo: '|add:d|add:' — '|add:h %}{% endwith %}
 
-    {% include 'reportes/_filtro_fechas.html' %}
+{% include 'reportes/_filtro_fechas.html' %}
+
+{% if libros %}
+<ol class="ranking">
+    {% for libro in libros %}
+    <li class="ranking__fila">
+        <span class="ranking__puesto">{{ forloop.counter }}</span>
+        <div class="ranking__portada">
+            {% include 'componentes/_tomo.html' %}
+        </div>
+        <div class="ranking__texto">
+            <a class="ranking__titulo" href="{% url 'catalogos:libro_detail' libro.pk %}">{{ libro.titulo }}</a>
+            <span class="tabla__meta">{{ libro.autores.all|join:"; "|default:"Autor no especificado" }} · {{ libro.categoria.nombre|default:"General" }}</span>
+            <span class="ranking__barra" aria-hidden="true"><span style="width: {% widthratio libro.total_prestamos libros.0.total_prestamos 100 %}%"></span></span>
+        </div>
+        <span class="ranking__total"><strong class="cifra">{{ libro.total_prestamos }}</strong> préstamo{{ libro.total_prestamos|pluralize }}</span>
+    </li>
+    {% endfor %}
+</ol>
+{% else %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>Sin préstamos en este periodo</h2>
+    <p>Prueba con un rango de fechas más amplio.</p>
 </div>
-
-<div class="card shadow-sm mb-5">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 font-serif">Top 20 Obras con Mayor Demanda</h5>
-        <span class="small text-muted">Período: {% if desde %}{{ desde|date:"d/m/Y" }}{% else %}inicio{% endif %} a {{ hasta|date:"d/m/Y" }}</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th style="width: 70px;">Rank</th>
-                    <th style="width: 70px;">Portada</th>
-                    <th>Título & Autores</th>
-                    <th>Categoría</th>
-                    <th>Ejemplares Disp.</th>
-                    <th class="text-center" style="width: 160px;">Total Préstamos</th>
-                    <th class="text-end">Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for libro in libros %}
-                <tr>
-                    <td class="align-middle">
-                        {% if forloop.counter == 1 %}
-                        <span class="brand-badge bg-warning text-dark fw-bold" style="width: 30px; height: 30px;">1</span>
-                        {% elif forloop.counter == 2 %}
-                        <span class="brand-badge text-dark fw-bold" style="width: 30px; height: 30px; background: #E2E8F0;">2</span>
-                        {% elif forloop.counter == 3 %}
-                        <span class="brand-badge text-white fw-bold" style="width: 30px; height: 30px; background: var(--color-terracotta);">3</span>
-                        {% else %}
-                        <span class="text-muted fw-bold ps-2 font-monospace">{{ forloop.counter }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="align-middle">
-                        {% if libro.portada %}
-                        <img src="{{ libro.portada.url }}" class="rounded shadow-sm" style="width: 44px; height: 58px; object-fit: cover;" alt="{{ libro.titulo }}">
-                        {% else %}
-                        <div class="rounded d-flex align-items-center justify-content-center text-muted" style="width: 44px; height: 58px; background: var(--color-surface-soft);">
-                            <i class="bi bi-book"></i>
-                        </div>
-                        {% endif %}
-                    </td>
-                    <td class="align-middle">
-                        <div class="font-serif fw-semibold fs-6">
-                            <a href="{% url 'catalogos:libro_detail' libro.pk %}" class="text-decoration-none text-dark">
-                                {{ libro.titulo }}
-                            </a>
-                        </div>
-                        <small class="text-muted fst-italic">
-                            {{ libro.autores.all|join:", "|default:"Autor no especificado" }}
-                        </small>
-                    </td>
-                    <td class="align-middle">
-                        <span class="small text-muted">{{ libro.categoria.nombre|default:"General" }}</span>
-                    </td>
-                    <td class="align-middle">
-                        {% if libro.ejemplares_disponibles > 0 %}
-                        <span class="badge-status badge-disponible">
-                            {{ libro.ejemplares_disponibles }} disponibles
-                        </span>
-                        {% else %}
-                        <span class="badge-status badge-perdido">Agotado</span>
-                        {% endif %}
-                    </td>
-                    <td class="align-middle text-center">
-                        <span class="badge-status badge-prestado fs-6 px-3 py-1 font-monospace">
-                            <i class="bi bi-arrow-repeat me-1"></i> {{ libro.total_prestamos }}
-                        </span>
-                    </td>
-                    <td class="align-middle text-end">
-                        <a href="{% url 'catalogos:libro_detail' libro.pk %}" class="btn btn-sm btn-outline-forest">
-                            Ver Obra
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
-                        <i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-25"></i>
-                        No se registraron préstamos en el período seleccionado.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
+{% endif %}
 {% endblock %}

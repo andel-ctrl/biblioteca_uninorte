@@ -1,50 +1,65 @@
 {% extends 'base.html' %}
-{% block title %}{{ usuario.get_nombre_completo }}{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}{{ usuario.get_nombre_completo }} — Biblioteca{% endblock %}
 {% block content %}
-<h2 class="mb-3"><i class="bi bi-person me-2"></i>{{ usuario.get_nombre_completo }}</h2>
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <table class="table table-sm">
-                    <tr><th>Código</th><td>{{ usuario.codigo_universitario }}</td></tr>
-                    <tr><th>ID</th><td>{{ usuario.identificacion }}</td></tr>
-                    <tr><th>Correo</th><td>{{ usuario.user.email }}</td></tr>
-                    <tr><th>Rol</th><td>{{ usuario.get_rol_display }}</td></tr>
-                    <tr><th>Carrera</th><td>{{ usuario.carrera|default:"—" }}</td></tr>
-                    <tr><th>Estado</th><td>
-                        {% if usuario.esta_activo %}<span class="badge bg-success">Activo</span>
-                        {% else %}<span class="badge bg-danger">Bloqueado</span>{% endif %}
-                    </td></tr>
-                </table>
-                <a href="{% url 'usuarios:usuario_edit' usuario.pk %}" class="btn btn-sm btn-outline-secondary w-100">Editar</a>
-            </div>
-        </div>
+<nav class="miga" aria-label="Ruta de navegación"><a href="{% url 'usuarios:usuario_list' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Usuarios</a></nav>
+
+<header class="encabezado">
+    <div>
+        <p class="encabezado__ref">Ficha de {{ usuario.get_rol_display|lower }} · {{ usuario.codigo_universitario }}</p>
+        <h1 class="encabezado__titulo">{{ usuario.user.first_name|default:usuario.user.username }} <em>{{ usuario.user.last_name }}</em></h1>
+        <p class="encabezado__bajada">{{ usuario.carrera|default:"Sin carrera registrada" }}</p>
     </div>
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold">Historial de préstamos</div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead class="table-light">
-                        <tr><th>Libro</th><th>Fecha</th><th>Estado</th><th>Multa</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for p in prestamos %}
-                        <tr>
-                            <td>{{ p.ejemplar.libro.titulo|truncatechars:35 }}</td>
-                            <td>{{ p.fecha_solicitud|date:"d/m/Y" }}</td>
-                            <td>{{ p.get_estado_display }}</td>
-                            <td>{% if p.devolucion %}${{ p.devolucion.monto_multa }}{% else %}—{% endif %}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="text-center text-muted py-3">Sin préstamos.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="encabezado__acciones">
+        <a href="{% url 'usuarios:usuario_edit' usuario.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil" aria-hidden="true"></i> Editar</a>
+        {% if usuario.user_id != user.pk %}<a href="{% url 'usuarios:usuario_delete' usuario.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash" aria-hidden="true"></i> Eliminar</a>{% endif %}
     </div>
+</header>
+{% include 'componentes/_colofon.html' with n=resumen.total etiqueta='préstamos realizados' singular='préstamo realizado' %}
+
+<div class="detalle-prestamo">
+    <section aria-labelledby="t-historial">
+        <h2 id="t-historial" class="grupo-prestamos__titulo">Historial de <em>préstamos</em> <span class="grupo-prestamos__n">{{ prestamos|length }}</span></h2>
+        {% if prestamos %}
+        <ol class="historial">
+            {% for p in prestamos %}
+            <li class="historial__fila">
+                <span class="historial__fecha cifra">{{ p.fecha_prestamo|default:p.fecha_solicitud|date:"d.m.Y" }}</span>
+                <div class="historial__libro">
+                    <a href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a>
+                    <span class="tabla__meta">Ejemplar <span class="mono">{{ p.ejemplar.codigo_barras }}</span>{% if p.fecha_vencimiento %} · vence {{ p.fecha_vencimiento|date:"d/m/Y" }}{% endif %}</span>
+                </div>
+                <span class="historial__estado">{% estado p.estado 'prestamo' %}</span>
+                <span class="historial__multa">
+                    {% if p.devolucion and p.devolucion.monto_multa > 0 %}<span class="cifra">{{ p.devolucion.monto_multa|pesos }}</span>{% if p.devolucion.multa_pagada %}{% estado 'pagada' 'multa' 'Pagada' %}{% else %}{% estado 'pendiente' 'multa' 'Por pagar' %}<a class="accion" href="{% url 'prestamos:multa_pagar' p.pk %}?next={{ request.path|urlencode }}">Registrar pago</a>{% endif %}
+                    {% elif p.estado == 'vencido' %}<span class="text-danger fw-semibold">Mora {{ p.multa_estimada|pesos }}</span>
+                    {% else %}<span class="historial__sin">Sin multa</span>{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}<p class="grupo-prestamos__vacio">Este usuario aún no tiene préstamos.</p>{% endif %}
+    </section>
+
+    <aside class="detalle-prestamo__lado">
+        <dl class="libro-mayor__lista">
+            <div><dt>Estado</dt><dd>{% estado usuario.estado 'usuario' %}</dd></div>
+            <div><dt>Rol</dt><dd>{{ usuario.get_rol_display }}</dd></div>
+            <div><dt>Código</dt><dd class="mono">{{ usuario.codigo_universitario }}</dd></div>
+            <div><dt>Identificación</dt><dd class="mono">{{ usuario.identificacion }}</dd></div>
+            <div><dt>Usuario</dt><dd class="mono">{{ usuario.user.username }}</dd></div>
+            <div><dt>Correo</dt><dd>{{ usuario.user.email|default:"—" }}</dd></div>
+            <div><dt>Teléfono</dt><dd>{{ usuario.telefono|default:"—" }}</dd></div>
+            <div><dt>Registrado</dt><dd class="cifra">{{ usuario.fecha_registro|date:"d/m/Y" }}</dd></div>
+        </dl>
+        <h3 class="libro-mayor__subtitulo">Situación</h3>
+        <dl class="libro-mayor__lista">
+            <div><dt>En curso</dt><dd class="cifra">{{ resumen.en_curso }}</dd></div>
+            <div><dt>Vencidos</dt><dd class="cifra {% if resumen.vencidos %}text-danger{% endif %}">{{ resumen.vencidos }}</dd></div>
+            <div><dt>Por aprobar</dt><dd class="cifra">{{ resumen.pendientes }}</dd></div>
+            <div><dt>Multas por pagar</dt><dd class="cifra {% if resumen.multas_por_pagar %}text-danger{% endif %}">{{ resumen.multas_por_pagar|pesos }}</dd></div>
+        </dl>
+        {% if not usuario.esta_activo %}<p class="detalle-prestamo__nota">Cuenta bloqueada: no puede solicitar préstamos. Para habilitarla, edítala y cambia su estado a activo.</p>{% endif %}
+    </aside>
 </div>
-<a href="{% url 'usuarios:usuario_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
 {% endblock %}

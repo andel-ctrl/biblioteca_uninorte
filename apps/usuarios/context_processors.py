@@ -1,4 +1,5 @@
 from .decorators import es_bibliotecario_o_staff
+from .personajes import del_usuario
 
 
 def navegacion(request):
@@ -13,4 +14,7 @@ def navegacion(request):
         # Import local: evita dependencia circular entre apps al cargar la configuración
         from apps.prestamos.models import Prestamo
         datos['nav_pendientes'] = Prestamo.objects.filter(estado='pendiente').count()
+    else:
+        # Personaje ilustrado de la ficha de cuenta: al azar en cada inicio de sesión (docente o estudiante)
+        datos['personaje'] = del_usuario(request)
     return datos

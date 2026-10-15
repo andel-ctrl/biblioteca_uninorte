@@ -1,49 +1,72 @@
 {% extends 'base.html' %}
-{% block title %}Usuarios{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Usuarios — Biblioteca{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-people me-2"></i>Usuarios de Biblioteca</h2>
-    <a href="{% url 'usuarios:usuario_create' %}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Nuevo Usuario</a>
-</div>
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Nombre</th>
-                    <th>Código</th>
-                    <th>Correo</th>
-                    <th>Rol</th>
-                    <th>Estado</th>
-                    <th>Préstamos activos</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in usuarios %}
-                <tr>
-                    <td>{{ u.get_nombre_completo }}</td>
-                    <td>{{ u.codigo_universitario }}</td>
-                    <td>{{ u.user.email }}</td>
-                    <td>{{ u.get_rol_display }}</td>
-                    <td>
-                        {% if u.estado == 'activo' %}<span class="badge bg-success">Activo</span>
-                        {% else %}<span class="badge bg-danger">Bloqueado</span>{% endif %}
-                    </td>
-                    <td>{{ u.prestamos_activos }}</td>
-                    <td>
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'usuarios:usuario_detail' u.pk %}" class="btn btn-outline-primary">Ver</a>
-                            <a href="{% url 'usuarios:usuario_edit' u.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                            <a href="{% url 'usuarios:usuario_delete' u.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i></a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="7" class="text-center text-muted py-4">Sin usuarios registrados.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<header class="encabezado">
+    <div>
+        <p class="encabezado__ref">Registro de lectores y personal</p>
+        <h1 class="encabezado__titulo"><em>Usuarios</em></h1>
+        <p class="encabezado__bajada">Busca por nombre, código, identificación o correo. Desde aquí se crean, editan, bloquean y eliminan cuentas.</p>
     </div>
+    <div class="encabezado__acciones">
+        <a href="{% url 'usuarios:usuario_create' %}" class="btn btn-primary"><i class="bi bi-person-plus" aria-hidden="true"></i> Nuevo usuario</a>
+    </div>
+</header>
+{% include 'componentes/_colofon.html' with n=usuarios|length etiqueta='usuarios en esta vista' singular='usuario en esta vista' %}
+
+<form method="get" class="buscador buscador--catalogo" role="search">
+    <div class="buscador__campo">
+        <label class="visually-hidden" for="u-q">Buscar</label>
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" id="u-q" name="q" value="{{ query }}" class="form-control" placeholder="Nombre, código, identificación o correo">
+    </div>
+    <div>
+        <label class="visually-hidden" for="u-rol">Rol</label>
+        <select id="u-rol" name="rol" class="form-select">
+            <option value="">Todos los roles</option>
+            {% for v, l in roles %}<option value="{{ v }}" {% if rol == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="visually-hidden" for="u-estado">Estado</label>
+        <select id="u-estado" name="estado" class="form-select">
+            <option value="">Cualquier estado</option>
+            {% for v, l in estados %}<option value="{{ v }}" {% if estado == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+    </div>
+    <span aria-hidden="true"></span>
+    <button type="submit" class="btn btn-secondary"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
+</form>
+
+{% if usuarios %}
+<div class="tabla-desplazable"><table class="table tabla tabla--apilada tabla--ancha table-hover">
+    <thead>
+        <tr><th scope="col">Usuario</th><th scope="col">Código</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col" class="text-end">En curso</th><th scope="col" class="text-end">Acciones</th></tr>
+    </thead>
+    <tbody>
+        {% for u in usuarios %}
+        <tr>
+            <td data-label="Usuario"><div><a class="tabla__titulo text-decoration-none" href="{% url 'usuarios:usuario_detail' u.pk %}">{{ u.get_nombre_completo }}</a><span class="tabla__meta">{{ u.user.email|default:"Sin correo" }}</span></div></td>
+            <td data-label="Código" class="mono">{{ u.codigo_universitario }}</td>
+            <td data-label="Rol"><div>{{ u.get_rol_display }}{% if u.carrera %}<span class="tabla__meta">{{ u.carrera }}</span>{% endif %}</div></td>
+            <td data-label="Estado">{% estado u.estado 'usuario' %}</td>
+            <td data-label="En curso" class="text-end cifra"><span>{{ u.n_activos }}{% if u.n_vencidos %} <span class="text-danger" title="Préstamos vencidos">({{ u.n_vencidos }} venc.)</span>{% endif %}</span></td>
+            <td data-label="">
+                <div class="acciones">
+                    <a href="{% url 'usuarios:usuario_detail' u.pk %}" class="accion">Ver ficha</a>
+                    <a href="{% url 'usuarios:usuario_edit' u.pk %}" class="accion">Editar</a>
+                    {% if u.user_id != user.pk %}<a href="{% url 'usuarios:usuario_delete' u.pk %}" class="accion accion--peligro">Eliminar</a>{% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table></div>
+{% else %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>No hay usuarios que coincidan</h2>
+    {% if query or rol or estado %}<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'usuarios:usuario_list' %}">Quitar filtros</a>{% endif %}
 </div>
+{% endif %}
 {% endblock %}

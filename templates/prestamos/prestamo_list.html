@@ -3,14 +3,14 @@
 {% block title %}Préstamos — Biblioteca{% endblock %}
 {% block content %}
 
-<header class="encabezado">
+<header class="encabezado encabezado--patron encabezado--molinete">
     <div>
-        <p class="encabezado__ref"><span class="signatura">CIR</span> Circulación</p>
+        <p class="encabezado__ref">Circulación</p>
         <h1 class="encabezado__titulo">Préstamos</h1>
         <p class="encabezado__bajada">Aprueba o rechaza solicitudes, registra devoluciones y revisa el estado de cada préstamo.</p>
     </div>
 </header>
-{% include 'componentes/_colofon.html' with n=prestamos|length etiqueta='préstamos en esta vista' %}
+{% include 'componentes/_colofon.html' with n=prestamos|length etiqueta='préstamos en esta vista' singular='préstamo en esta vista' %}
 
 <!-- Filtro por estado: pestañas en pantallas medianas y grandes -->
 <nav class="pestanas d-none d-md-flex" aria-label="Filtrar préstamos por estado">
@@ -36,7 +36,7 @@
 
 {% if prestamos %}
 <div class="tabla-marco">
-    <table class="table tabla tabla--apilada table-hover">
+    <div class="tabla-desplazable"><table class="table tabla tabla--apilada tabla--ancha table-hover">
         <thead>
             <tr>
                 <th scope="col">N.º</th>
@@ -71,13 +71,13 @@
                         {% elif p.estado == 'activo' or p.estado == 'vencido' %}
                         <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="accion accion--principal"><i class="bi bi-arrow-return-left" aria-hidden="true"></i> Devolver</a>
                         {% endif %}
-                        <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="accion">Ver detalle</a>
+                        <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="accion" aria-label="Ver detalle del préstamo {{ p.id }}">Ver <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                     </div>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 </div>
 {% else %}
 <div class="vacio">

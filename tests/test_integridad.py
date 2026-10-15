@@ -167,8 +167,14 @@ class RutasYPermisosTest(BaseBiblioteca):
         self.assertEqual(self.c_bib.get(reverse('prestamos:prestamo_detail', args=[ajeno.pk])).status_code, 200)
 
     def test_logout(self):
-        r = self.c_lec.get(reverse('logout'))
+        r = self.c_lec.post(reverse('logout'))
         self.assertRedirects(r, reverse('login'), fetch_redirect_response=False)
+        self.assertNotIn('_auth_user_id', self.c_lec.session)
+
+    def test_logout_por_get_no_cierra_sesion(self):
+        # Un enlace o una imagen de otra página no deben poder cerrar la sesión
+        self.c_lec.get(reverse('logout'))
+        self.assertIn('_auth_user_id', self.c_lec.session)
 
 
 # ---------------------------------------------------------------------------
@@ -479,7 +485,7 @@ class UsuariosTest(BaseBiblioteca):
                 r = self.c_bib.post(reverse('usuarios:usuario_edit', args=[self.bib.pk]), self.datos_edicion(self.bib, **cambio))
                 self.assertTrue(r.context['form'].errors.get(campo))
         r = self.c_bib.post(reverse('usuarios:usuario_delete', args=[self.bib.pk]), follow=True)
-        self.assertContains(r, 'No puede eliminar su propia cuenta')
+        self.assertContains(r, 'No puedes eliminar tu propia cuenta')
         self.bib.refresh_from_db()
         self.assertEqual((self.bib.estado, self.bib.rol), ('activo', 'bibliotecario'))
 
@@ -669,3 +675,446 @@ class MisPrestamosTest(BaseBiblioteca):
 
     def test_sin_prestamos_invita_al_catalogo(self):
         self.assertContains(self.c_lec.get(reverse('usuarios:mi_historial')), 'Aún no tienes préstamos')
+
+
+# ---------------------------------------------------------------------------
+# 10. Mesa de trabajo del bibliotecario
+# ---------------------------------------------------------------------------
+class MesaDeTrabajoTest(BaseBiblioteca):
+
+    def test_bandejas_con_datos_reales(self):
+        self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        self.prestamo(ejemplar=self.ej1, prestado_hace=20, vence_en=-3)   # se volverá vencido
+        self.prestamo(ejemplar=self.ej2, prestado_hace=10, vence_en=2)    # vence en 2 días
+        c = self.c_bib.get(reverse('reportes:dashboard')).context
+        self.assertEqual((len(c['solicitudes']), len(c['vencidos_lista']), len(c['proximos'])), (1, 1, 1))
+        self.assertEqual((c['tareas'], c['atencion']), (3, 2))
+        self.assertEqual(c['proximos'][0].dias_restantes, 2)
+        self.assertEqual(c['inventario']['prestado'], 2)
+
+    def test_aprobar_en_un_clic_vuelve_a_la_mesa(self):
+        p = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        mesa = reverse('reportes:dashboard')
+        html = self.c_bib.get(mesa).content.decode()
+        self.assertIn(f'action="{reverse("prestamos:prestamo_aprobar", args=[p.pk])}"', html)
+        r = self.c_bib.post(reverse('prestamos:prestamo_aprobar', args=[p.pk]),
+                            {'fecha_vencimiento': hace(-15).isoformat(), 'next': mesa})
+        self.assertRedirects(r, mesa, fetch_redirect_response=False)
+        p.refresh_from_db()
+        self.assertEqual((p.estado, p.fecha_vencimiento), ('activo', hace(-15)))
+
+    def test_next_externo_se_ignora(self):
+        p = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        r = self.c_bib.post(reverse('prestamos:prestamo_aprobar', args=[p.pk]),
+                            {'fecha_vencimiento': hace(-15).isoformat(), 'next': 'https://sitio-externo.com/'})
+        self.assertRedirects(r, reverse('prestamos:prestamo_list'), fetch_redirect_response=False)
+
+    def test_lector_bloqueado_no_ofrece_aprobar(self):
+        p = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        self.lec.estado = 'bloqueado'
+        self.lec.save()
+        r = self.c_bib.get(reverse('reportes:dashboard'))
+        self.assertContains(r, 'El lector está bloqueado')
+        self.assertNotContains(r, f'action="{reverse("prestamos:prestamo_aprobar", args=[p.pk])}"')
+
+    def test_actividad_reciente_mezcla_solicitudes_y_devoluciones(self):
+        p = self.prestamo(prestado_hace=5, vence_en=5)
+        Devolucion.objects.create(prestamo=p, fecha_devolucion=timezone.localdate())
+        tipos = {e['tipo'] for e in self.c_bib.get(reverse('reportes:dashboard')).context['eventos']}
+        self.assertEqual(tipos, {'solicitud', 'devolucion'})
+
+
+# ---------------------------------------------------------------------------
+# 11. Campos de fecha: el navegador necesita el formato AAAA-MM-DD
+# ---------------------------------------------------------------------------
+class CamposFechaTest(BaseBiblioteca):
+
+    def test_devolucion_propone_la_fecha_de_hoy(self):
+        p = self.prestamo()
+        r = self.c_bib.get(reverse('prestamos:devolucion_registrar', args=[p.pk]))
+        self.assertContains(r, f'value="{timezone.localdate().isoformat()}"')
+
+    def test_editar_ejemplar_conserva_la_fecha_de_adquisicion(self):
+        self.ej1.fecha_adquisicion = datetime.date(2024, 3, 9)
+        self.ej1.save()
+        r = self.c_bib.get(reverse('catalogos:ejemplar_edit', args=[self.ej1.pk]))
+        self.assertContains(r, 'value="2024-03-09"')
+
+
+# ---------------------------------------------------------------------------
+# 12. Búsqueda de usuarios
+# ---------------------------------------------------------------------------
+class BusquedaUsuariosTest(BaseBiblioteca):
+
+    def ids(self, **params):
+        return {u.pk for u in self.c_bib.get(reverse('usuarios:usuario_list'), params).context['usuarios']}
+
+    def test_busca_por_nombre_codigo_identificacion_y_correo(self):
+        for q in ['Luis', 'E-001', '200', 'lector@uni']:
+            with self.subTest(q=q):
+                self.assertEqual(self.ids(q=q), {self.lec.pk})
+
+    def test_filtros_de_rol_y_estado(self):
+        self.assertEqual(self.ids(rol='bibliotecario'), {self.bib.pk})
+        self.lec.estado = 'bloqueado'
+        self.lec.save()
+        self.assertEqual(self.ids(estado='bloqueado'), {self.lec.pk})
+        self.assertEqual(len(self.ids(rol='inexistente')), 2)  # valor inválido: se ignora
+
+    def test_cuenta_prestamos_en_curso(self):
+        self.prestamo(ejemplar=self.ej1, prestado_hace=20, vence_en=-2)
+        Prestamo.actualizar_vencidos()
+        u = next(u for u in self.c_bib.get(reverse('usuarios:usuario_list')).context['usuarios'] if u.pk == self.lec.pk)
+        self.assertEqual((u.n_activos, u.n_vencidos), (1, 1))
+
+
+# ---------------------------------------------------------------------------
+# 13. Login con sesión ya iniciada (al volver con el botón "atrás")
+# ---------------------------------------------------------------------------
+class LoginConSesionTest(BaseBiblioteca):
+
+    def test_bibliotecario_con_sesion_no_ve_el_login(self):
+        r = self.c_bib.get(reverse('login'))
+        self.assertRedirects(r, '/', fetch_redirect_response=False)
+
+    def test_lector_con_sesion_no_ve_el_login(self):
+        r = self.c_lec.get(reverse('login'))
+        self.assertRedirects(r, '/', fetch_redirect_response=False)
+
+    def test_visitante_si_ve_el_login(self):
+        self.assertEqual(self.c_anon.get(reverse('login')).status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# 14. Formulario del libro: autores con casillas, alta rápida de autor y editoriales sugeridas
+# ---------------------------------------------------------------------------
+class FormularioLibroTest(BaseBiblioteca):
+
+    def test_autores_como_casillas_y_editoriales_sugeridas(self):
+        html = self.c_bib.get(reverse('catalogos:libro_create')).content.decode()
+        self.assertIn('type="checkbox" name="autores"', html)
+        self.assertIn('<datalist id="editoriales-registradas">', html)
+        self.assertIn('<option value="Sudamericana">', html)
+        self.assertIn('list="editoriales-registradas"', html)
+
+    def test_crear_libro_con_varios_autores(self):
+        otro = Autor.objects.create(nombre='Isabel', apellido='Allende')
+        self.c_bib.post(reverse('catalogos:libro_create'), {
+            'isbn': '978-1-1111-1111', 'titulo': 'Dos autores', 'autores': [self.autor.pk, otro.pk],
+            'editorial': 'Sudamericana', 'anio_publicacion': 2000,
+        })
+        self.assertEqual(set(Libro.objects.get(isbn='978-1-1111-1111').autores.values_list('pk', flat=True)), {self.autor.pk, otro.pk})
+
+    def test_alta_rapida_de_autor(self):
+        url = reverse('catalogos:autor_rapido')
+        r = self.c_bib.post(url, {'nombre': 'Julio', 'apellido': 'Cortázar'})
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.json()['texto'], 'Cortázar, Julio')
+        r = self.c_bib.post(url, {'nombre': 'julio', 'apellido': 'cortázar'})        # mismo autor: no se duplica
+        self.assertEqual((r.status_code, r.json()['existente']), (200, True))
+        self.assertEqual(Autor.objects.filter(apellido__iexact='Cortázar').count(), 1)
+        r = self.c_bib.post(url, {'nombre': '', 'apellido': ''})                    # datos inválidos
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('nombre', r.json()['errores'])
+
+    def test_alta_rapida_solo_bibliotecario_y_solo_post(self):
+        url = reverse('catalogos:autor_rapido')
+        self.assertEqual(self.c_lec.post(url, {'nombre': 'X', 'apellido': 'Y'}).status_code, 302)
+        self.assertEqual(self.c_bib.get(url).status_code, 405)
+        self.assertFalse(Autor.objects.filter(apellido='Y').exists())
+
+
+# ---------------------------------------------------------------------------
+# Ampliar plazo de un préstamo activo
+# ---------------------------------------------------------------------------
+class AmpliarPlazoTest(BaseBiblioteca):
+    def url(self, p):
+        return reverse('prestamos:prestamo_ampliar', args=[p.pk])
+
+    def test_amplia_y_deja_constancia(self):
+        p = self.prestamo(prestado_hace=5, vence_en=10)
+        nueva = hace(-25)
+        r = self.c_bib.post(self.url(p), {'fecha_vencimiento': nueva.isoformat()}, follow=True)
+        p.refresh_from_db()
+        self.assertEqual(p.fecha_vencimiento, nueva)
+        self.assertEqual(p.estado, 'activo')
+        self.assertIn('Plazo ampliado del', p.observaciones)
+        self.assertContains(r, 'Plazo ampliado')
+
+    def test_detalle_muestra_boton_solo_si_se_puede(self):
+        activo = self.prestamo(prestado_hace=5, vence_en=10)
+        self.assertContains(self.c_bib.get(reverse('prestamos:prestamo_detail', args=[activo.pk])), self.url(activo))
+        vencido = self.prestamo(ejemplar=self.ej2, estado='vencido', prestado_hace=20, vence_en=-3)
+        self.assertNotContains(self.c_bib.get(reverse('prestamos:prestamo_detail', args=[vencido.pk])), self.url(vencido))
+
+    def test_no_se_amplia_un_vencido(self):
+        p = self.prestamo(estado='vencido', prestado_hace=20, vence_en=-3)
+        antes = p.fecha_vencimiento
+        r = self.c_bib.post(self.url(p), {'fecha_vencimiento': hace(-10).isoformat()}, follow=True)
+        p.refresh_from_db()
+        self.assertEqual(p.fecha_vencimiento, antes)
+        self.assertContains(r, 'no se puede ampliar')
+
+    def test_fechas_fuera_de_rango(self):
+        p = self.prestamo(prestado_hace=5, vence_en=10)
+        antes = p.fecha_vencimiento
+        # antes del vencimiento actual
+        r = self.c_bib.post(self.url(p), {'fecha_vencimiento': hace(-3).isoformat()})
+        self.assertContains(r, 'posterior al vencimiento actual')
+        # más de 60 días desde el préstamo
+        r = self.c_bib.post(self.url(p), {'fecha_vencimiento': (p.fecha_prestamo + datetime.timedelta(days=61)).isoformat()})
+        self.assertContains(r, 'no puede pasar de 60 días')
+        p.refresh_from_db()
+        self.assertEqual(p.fecha_vencimiento, antes)
+
+    def test_al_maximo_ya_no_se_amplia(self):
+        p = self.prestamo(prestado_hace=5, vence_en=10)
+        p.fecha_vencimiento = p.fecha_limite_ampliacion(); p.save()
+        r = self.c_bib.get(self.url(p), follow=True)
+        self.assertContains(r, 'ya llegó al máximo')
+
+    def test_lector_no_puede_ampliar(self):
+        p = self.prestamo(prestado_hace=5, vence_en=10)
+        antes = p.fecha_vencimiento
+        self.c_lec.post(self.url(p), {'fecha_vencimiento': hace(-20).isoformat()})
+        p.refresh_from_db()
+        self.assertEqual(p.fecha_vencimiento, antes)
+
+
+class AvisoCambiosSinGuardarTest(BaseBiblioteca):
+    def test_formularios_de_edicion_llevan_el_aviso(self):
+        for url in (reverse('catalogos:libro_edit', args=[self.libro.pk]), reverse('usuarios:usuario_edit', args=[self.lec.pk]),
+                    reverse('catalogos:ejemplar_edit', args=[self.ej1.pk]), reverse('catalogos:autor_create')):
+            self.assertContains(self.c_bib.get(url), 'data-avisar-cambios', msg_prefix=url)
+
+
+# ---------------------------------------------------------------------------
+# Editar y eliminar autores
+# ---------------------------------------------------------------------------
+class AutoresEdicionTest(BaseBiblioteca):
+    def test_editar_corrige_el_nombre_en_sus_libros(self):
+        r = self.c_bib.get(reverse('catalogos:autor_edit', args=[self.autor.pk]))
+        self.assertContains(r, 'value="Gabriel"')  # precargado
+        r = self.c_bib.post(reverse('catalogos:autor_edit', args=[self.autor.pk]),
+                            {'nombre': 'Gabriel José', 'apellido': 'García Márquez', 'biografia': ''}, follow=True)
+        self.assertContains(r, 'actualizado en su libro')
+        self.assertContains(self.c_bib.get(reverse('catalogos:libro_detail', args=[self.libro.pk])), 'Gabriel José')
+
+    def test_no_permite_renombrar_a_un_autor_existente(self):
+        otro = Autor.objects.create(nombre='Isabel', apellido='Allende')
+        r = self.c_bib.post(reverse('catalogos:autor_edit', args=[otro.pk]), {'nombre': 'gabriel', 'apellido': 'garcía márquez', 'biografia': ''})
+        self.assertContains(r, 'Ya existe un autor registrado')
+        otro.refresh_from_db()
+        self.assertEqual(otro.nombre, 'Isabel')
+        r = self.c_bib.post(reverse('catalogos:autor_create'), {'nombre': 'Gabriel', 'apellido': 'García Márquez', 'biografia': ''})
+        self.assertContains(r, 'Ya existe un autor registrado')
+
+    def test_alta_rapida_sigue_devolviendo_el_existente(self):
+        r = self.c_bib.post(reverse('catalogos:autor_rapido'), {'nombre': 'gabriel', 'apellido': 'GARCÍA MÁRQUEZ'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['id'], self.autor.pk)
+
+    def test_eliminar_solo_sin_libros(self):
+        r = self.c_bib.post(reverse('catalogos:autor_delete', args=[self.autor.pk]), follow=True)
+        self.assertContains(r, 'No se puede eliminar')
+        self.assertTrue(Autor.objects.filter(pk=self.autor.pk).exists())
+        solo = Autor.objects.create(nombre='Sin', apellido='Libros')
+        self.assertContains(self.c_bib.get(reverse('catalogos:autor_list')), reverse('catalogos:autor_delete', args=[solo.pk]))
+        self.assertNotContains(self.c_bib.get(reverse('catalogos:autor_list')), reverse('catalogos:autor_delete', args=[self.autor.pk]))
+        self.c_bib.post(reverse('catalogos:autor_delete', args=[solo.pk]))
+        self.assertFalse(Autor.objects.filter(pk=solo.pk).exists())
+
+    def test_lector_no_edita_ni_elimina(self):
+        self.c_lec.post(reverse('catalogos:autor_edit', args=[self.autor.pk]), {'nombre': 'X', 'apellido': 'Y'})
+        solo = Autor.objects.create(nombre='Sin', apellido='Libros')
+        self.c_lec.post(reverse('catalogos:autor_delete', args=[solo.pk]))
+        self.autor.refresh_from_db()
+        self.assertEqual(self.autor.nombre, 'Gabriel')
+        self.assertTrue(Autor.objects.filter(pk=solo.pk).exists())
+        self.assertNotContains(self.c_lec.get(reverse('catalogos:autor_list')), 'Editar')
+
+
+
+# ---------------------------------------------------------------------------
+# Auditoría funcional: reglas que se corrigieron
+# ---------------------------------------------------------------------------
+class ReglasAuditoriaTest(BaseBiblioteca):
+    def test_devolucion_no_acepta_fecha_futura_ni_anterior_al_prestamo(self):
+        p = self.prestamo(prestado_hace=5, vence_en=10)
+        url = reverse('prestamos:devolucion_registrar', args=[p.pk])
+        r = self.c_bib.post(url, {'fecha_devolucion': hace(-3).isoformat(), 'observacion': ''})
+        self.assertContains(r, 'no puede ser posterior a hoy')
+        r = self.c_bib.post(url, {'fecha_devolucion': hace(9).isoformat(), 'observacion': ''})
+        self.assertContains(r, 'no puede ser anterior al préstamo')
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'activo')
+        self.c_bib.post(url, {'fecha_devolucion': hace(0).isoformat(), 'observacion': ''})
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'devuelto')
+
+    def test_aprobar_rechaza_las_otras_solicitudes_del_ejemplar(self):
+        otro_user = User.objects.create_user('otro', 'otro@uni.edu', CLAVE)
+        otro = UsuarioBiblioteca.objects.create(user=otro_user, codigo_universitario='E-777', identificacion='777')
+        p1 = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        p2 = self.prestamo(ejemplar=self.ej_libre, estado='pendiente', usuario=otro)
+        r = self.c_bib.post(reverse('prestamos:prestamo_aprobar', args=[p1.pk]), {'fecha_vencimiento': hace(-15).isoformat()}, follow=True)
+        p2.refresh_from_db()
+        self.assertEqual(p2.estado, 'rechazado')
+        self.assertIn('otra solicitud', p2.observaciones)
+        self.assertContains(r, 'Se rechazaron automáticamente 1 solicitud')
+
+    def test_aprobar_un_ejemplar_ya_prestado_falla_sin_duplicar(self):
+        p1 = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        self.ej_libre.estado = 'prestado'; self.ej_libre.save()
+        with self.assertRaises(ValueError):
+            p1.aprobar(self.bib)
+        p1.refresh_from_db()
+        self.assertEqual(p1.estado, 'pendiente')
+
+    def test_estado_del_ejemplar_no_se_cambia_a_mano_con_prestamo_en_curso(self):
+        p = self.prestamo(ejemplar=self.ej1)
+        url = reverse('catalogos:ejemplar_edit', args=[self.ej1.pk])
+        self.c_bib.post(url, {'codigo_barras': 'T-001', 'ubicacion': 'Sala A', 'estado': 'disponible', 'notas': '', 'fecha_adquisicion': ''})
+        self.ej1.refresh_from_db()
+        self.assertEqual(self.ej1.estado, 'prestado')
+        self.assertContains(self.c_bib.get(url), 'Tiene un préstamo en curso')
+
+    def test_prestado_no_se_elige_a_mano(self):
+        url = reverse('catalogos:ejemplar_edit', args=[self.ej_libre.pk])
+        self.assertNotContains(self.c_bib.get(url), 'value="prestado"')
+        r = self.c_bib.post(url, {'codigo_barras': 'T-004', 'ubicacion': 'Sala A', 'estado': 'prestado', 'notas': '', 'fecha_adquisicion': ''})
+        self.ej_libre.refresh_from_db()
+        self.assertEqual(self.ej_libre.estado, 'disponible')
+        self.assertEqual(r.status_code, 200)  # vuelve al formulario con el error de opción inválida
+
+    def test_registrar_pago_de_multa_despues_de_la_devolucion(self):
+        p = self.prestamo(prestado_hace=20, vence_en=-4)
+        self.c_bib.post(reverse('prestamos:devolucion_registrar', args=[p.pk]), {'fecha_devolucion': hace(0).isoformat(), 'observacion': ''})
+        d = Devolucion.objects.get(prestamo=p)
+        self.assertGreater(d.monto_multa, 0)
+        self.assertFalse(d.multa_pagada)
+        url = reverse('prestamos:multa_pagar', args=[p.pk])
+        self.assertContains(self.c_bib.get(reverse('prestamos:prestamo_detail', args=[p.pk])), url)
+        self.c_lec.post(url)                       # el lector no puede
+        d.refresh_from_db(); self.assertFalse(d.multa_pagada)
+        self.c_bib.get(url)                        # GET solo muestra la confirmación
+        d.refresh_from_db(); self.assertFalse(d.multa_pagada)
+        r = self.c_bib.post(url, follow=True)
+        d.refresh_from_db(); self.assertTrue(d.multa_pagada)
+        self.assertContains(r, 'Pago de $2.000 registrado')
+        self.assertNotContains(self.c_lec.get(reverse('usuarios:mi_historial')), 'en multas pendientes')
+
+
+# ---------------------------------------------------------------------------
+# Lector al día: con vencidos o multas sin pagar no puede pedir libros
+# ---------------------------------------------------------------------------
+class LectorAlDiaTest(BaseBiblioteca):
+    def solicitar(self, ejemplar):
+        return self.c_lec.post(reverse('prestamos:prestamo_solicitar', args=[ejemplar.pk]), follow=True)
+
+    def test_con_prestamo_vencido_no_solicita_y_la_ficha_lo_explica(self):
+        self.prestamo(ejemplar=self.ej1, estado='vencido', prestado_hace=20, vence_en=-2)
+        r = self.solicitar(self.ej_libre)
+        self.assertContains(r, 'Tienes 1 préstamo vencido')
+        self.assertFalse(Prestamo.objects.filter(ejemplar=self.ej_libre).exists())
+        ficha = self.c_lec.get(reverse('catalogos:libro_detail', args=[self.libro.pk]))
+        self.assertContains(ficha, 'Devuélvelo para volver a solicitar')
+        self.assertNotContains(ficha, reverse('prestamos:prestamo_solicitar', args=[self.ej_libre.pk]))
+
+    def test_activo_ya_pasado_de_fecha_cuenta_como_vencido(self):
+        self.prestamo(ejemplar=self.ej1, estado='activo', prestado_hace=20, vence_en=-1)
+        self.assertContains(self.solicitar(self.ej_libre), 'préstamo vencido')
+
+    def test_con_multa_sin_pagar_no_solicita_y_al_pagar_si(self):
+        p = self.prestamo(ejemplar=self.ej1, prestado_hace=20, vence_en=-4)
+        self.c_bib.post(reverse('prestamos:devolucion_registrar', args=[p.pk]), {'fecha_devolucion': hace(0).isoformat(), 'observacion': ''})
+        self.assertContains(self.solicitar(self.ej_libre), 'en multas sin pagar')
+        self.c_bib.post(reverse('prestamos:multa_pagar', args=[p.pk]))
+        self.assertContains(self.solicitar(self.ej_libre), 'Solicitud de préstamo enviada')
+
+    def test_no_se_aprueba_ni_se_ofrece_en_la_mesa(self):
+        pendiente = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        self.prestamo(ejemplar=self.ej1, estado='vencido', prestado_hace=20, vence_en=-2)
+        mesa = self.c_bib.get(reverse('reportes:dashboard'))
+        self.assertContains(mesa, 'vencido sin devolver: no se puede aprobar')
+        r = self.c_bib.post(reverse('prestamos:prestamo_aprobar', args=[pendiente.pk]), {'fecha_vencimiento': hace(-15).isoformat()}, follow=True)
+        self.assertContains(r, 'No se puede aprobar todavía')
+        pendiente.refresh_from_db()
+        self.assertEqual(pendiente.estado, 'pendiente')
+
+    def test_al_dia_puede_solicitar(self):
+        self.assertContains(self.solicitar(self.ej_libre), 'Solicitud de préstamo enviada')
+
+
+# ---------------------------------------------------------------------------
+# Restricciones CHECK en la base de datos y búsqueda sin tildes
+# ---------------------------------------------------------------------------
+class RestriccionesBDTest(BaseBiblioteca):
+    def rechaza(self, crear):
+        from django.db import IntegrityError, transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                crear()
+
+    def test_la_bd_rechaza_datos_invalidos_aunque_se_salte_el_formulario(self):
+        self.rechaza(lambda: Prestamo.objects.create(usuario=self.lec, ejemplar=self.ej_libre, estado='activo',
+                                                     fecha_prestamo=hace(0), fecha_vencimiento=hace(5)))
+        self.rechaza(lambda: Prestamo.objects.create(usuario=self.lec, ejemplar=self.ej_libre, estado='activo'))
+        self.rechaza(lambda: Prestamo.objects.create(usuario=self.lec, ejemplar=self.ej_libre, estado='inventado'))
+        self.rechaza(lambda: ConfiguracionMulta.objects.create(tarifa_por_dia=Decimal('-5'), activa=False))
+        self.rechaza(lambda: ConfiguracionMulta.objects.create(tarifa_por_dia=Decimal('0'), activa=False))
+        self.rechaza(lambda: Libro.objects.create(isbn='X-0', titulo='x', editorial='x', anio_publicacion=0))
+        self.rechaza(lambda: Ejemplar.objects.filter(pk=self.ej1.pk).update(estado='robado'))
+        self.rechaza(lambda: UsuarioBiblioteca.objects.filter(pk=self.lec.pk).update(rol='rector'))
+        p = self.prestamo(ejemplar=self.ej2, estado='devuelto', prestado_hace=10, vence_en=-1)
+        d = Devolucion.objects.create(prestamo=p)  # save() calcula la multa; se fuerza un negativo con update
+        self.rechaza(lambda: Devolucion.objects.filter(pk=d.pk).update(monto_multa=Decimal('-100')))
+
+    def test_formulario_muestra_el_mensaje_de_la_restriccion(self):
+        r = self.c_bib.post(reverse('catalogos:libro_create'), {'isbn': '978-1', 'titulo': 'Viejo', 'editorial': 'X',
+                                                                'anio_publicacion': 999, 'autores': [self.autor.pk]})
+        self.assertContains(r, 'El año de publicación debe estar entre 1000 y 2100.')
+
+    def test_buscar_sin_tildes_ni_mayusculas(self):
+        for q in ('garcia', 'GARCÍA', 'García', 'marquez', 'cien anos'):
+            r = self.c_lec.get(reverse('catalogos:libro_list'), {'q': q})
+            self.assertContains(r, 'Cien años de soledad', msg_prefix=q)
+        r = self.c_bib.get(reverse('usuarios:usuario_list'), {'q': 'BEA'})
+        self.assertContains(r, 'Bibliotecaria')
+
+
+# ---------------------------------------------------------------------------
+# Personaje de la ficha de cuenta: al azar en cada inicio de sesión, según el rol
+# ---------------------------------------------------------------------------
+class PersonajeTest(BaseBiblioteca):
+    def personaje(self, cliente):
+        return cliente.session.get('personaje', '')
+
+    def test_estudiante_recibe_un_estudiante_y_se_conserva_en_la_sesion(self):
+        self.c_lec.get(reverse('catalogos:inicio'))
+        p = self.personaje(self.c_lec)
+        self.assertRegex(p, r'^img/personajes/estudiante-\d{2}\.webp$')
+        self.assertContains(self.c_lec.get(reverse('catalogos:libro_list')), p)
+        self.assertEqual(self.personaje(self.c_lec), p)
+
+    def test_docente_recibe_uno_con_birrete(self):
+        u = User.objects.create_user('profe', 'profe@uni.edu', CLAVE)
+        UsuarioBiblioteca.objects.create(user=u, codigo_universitario='D-1', identificacion='D1', rol='docente')
+        c = self.client_class(); c.force_login(u)
+        self.assertRegex(self.personaje(c), r'^img/personajes/docente-0[1-4]\.webp$')
+
+    def test_cambia_al_azar_entre_inicios_de_sesion(self):
+        vistos = set()
+        for _ in range(15):
+            c = self.client_class(); c.post(reverse('login'), {'username': 'lector', 'password': CLAVE})
+            vistos.add(self.personaje(c))
+        self.assertGreater(len(vistos), 1)
+
+    def test_todos_los_archivos_existen(self):
+        from django.contrib.staticfiles import finders
+        from apps.usuarios.personajes import PERSONAJES
+        for ruta in PERSONAJES['docente'] + PERSONAJES['estudiante']:
+            self.assertIsNotNone(finders.find(ruta), ruta)
+
+    def test_bibliotecario_no_lleva_personaje(self):
+        self.assertNotIn('ficha-cuenta__personaje', self.c_bib.get(reverse('reportes:dashboard')).content.decode())

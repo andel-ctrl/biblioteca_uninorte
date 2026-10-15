@@ -1,42 +1,71 @@
-{% extends 'base.html' %}
-{% block title %}{{ titulo|default:"Libro" }}{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold">
-                <i class="bi bi-journal-plus me-2"></i>{{ titulo|default:"Libro" }}
-            </div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    {% if libro and libro.portada %}
-                    <div class="mb-3 text-center">
-                        <label class="form-label fw-semibold d-block">Portada actual</label>
-                        <img src="{{ libro.portada.url }}" class="img-thumbnail shadow-sm mb-2" style="max-height: 180px;" alt="{{ libro.titulo }}">
-                    </div>
-                    {% endif %}
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.name == 'autores' %}
-                        <div class="form-text">
-                            ¿El autor no está en la lista? <a href="{% url 'catalogos:autor_create' %}" target="_blank">Crear nuevo autor</a> y luego recargue esta página.
-                        </div>
-                        {% endif %}
-                        {% if field.errors %}
-                        <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
-                        <a href="{% url 'catalogos:libro_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_formulario.html' %}
+{% block title %}{{ titulo|default:"Libro" }} — Biblioteca{% endblock %}
+{% block ref %}{% if libro %}Ficha {{ libro.isbn }}{% else %}Nuevo registro bibliográfico{% endif %}{% endblock %}
+{% block titulo %}{% if libro %}Editar <em>libro</em>{% else %}Nuevo <em>libro</em>{% endif %}{% endblock %}
+{% block bajada %}{% if libro %}Actualiza los datos bibliográficos de «{{ libro.titulo }}».{% else %}Registra un título en el catálogo. Después podrás agregarle sus ejemplares físicos.{% endif %}{% endblock %}
+{% block form_atributos %}enctype="multipart/form-data"{% endblock %}
+
+{% block notas %}
+<h2>Sobre el registro</h2>
+<p>Un <strong>libro</strong> es el título; cada copia física se registra aparte como <strong>ejemplar</strong>, con su código de barras y ubicación.</p>
+<ul>
+    <li>El <strong>ISBN</strong> no puede repetirse.</li>
+    <li>Puedes marcar <strong>varios autores</strong>; si falta alguno, agrégalo sin salir del formulario.</li>
+    <li>La <strong>editorial</strong> es texto: usa una sugerencia si ya existe, para escribirla siempre igual.</li>
+    <li>La portada es opcional: sin ella se muestra un lomo tipográfico.</li>
+</ul>
 {% endblock %}
+
+{% block antes_campos %}
+{% if libro and libro.portada %}
+<div class="formulario__vista-previa">
+    <img src="{{ libro.portada.url }}" alt="Portada actual de {{ libro.titulo }}">
+    <span class="form-text">Portada actual. Sube otra imagen solo si quieres reemplazarla.</span>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block campos %}
+{% include 'componentes/_campo.html' with field=form.titulo ancho=True %}
+{% include 'componentes/_campo.html' with field=form.isbn %}
+{% include 'componentes/_campo.html' with field=form.editorial %}
+{% include 'componentes/_campo.html' with field=form.anio_publicacion %}
+{% include 'componentes/_campo.html' with field=form.categoria %}
+<div class="campo campo--ancho selector-autores{% if form.autores.errors %} campo--error{% endif %}" data-selector-autores>
+    <span class="form-label" id="etiqueta-autores">Autores <span class="campo__obligatorio" aria-hidden="true">*</span></span>
+    <p class="form-text mt-0 mb-2">Marca uno o varios. Los elegidos aparecen aquí:</p>
+    <div class="selector-autores__elegidos" data-elegidos aria-live="polite">
+        <span class="selector-autores__ninguno" data-ninguno>Ningún autor seleccionado</span>
+    </div>
+    <div class="selector-autores__panel">
+        <div class="campo-icono__caja selector-autores__buscar">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" placeholder="Buscar autor por nombre o apellido" aria-label="Buscar autor" data-filtro-autores>
+        </div>
+        <div class="selector-autores__lista" role="group" aria-labelledby="etiqueta-autores" data-lista-autores>
+            {% for opcion in form.autores %}
+            <label class="selector-autores__opcion" for="{{ opcion.id_for_label }}">{{ opcion.tag }}<span>{{ opcion.choice_label }}</span></label>
+            {% endfor %}
+        </div>
+        <p class="selector-autores__sin-resultados" data-sin-resultados hidden>No hay autores que coincidan con la búsqueda.</p>
+    </div>
+    {% for error in form.autores.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+
+    <details class="selector-autores__nuevo" data-nuevo-autor data-url="{% url 'catalogos:autor_rapido' %}">
+        <summary><i class="bi bi-person-plus" aria-hidden="true"></i> Agregar un autor que no está en la lista</summary>
+        <div class="selector-autores__nuevo-campos">
+            {# Sin atributo name: estos campos no se envían con el libro; los usa el botón "Agregar autor" #}
+            <label class="campo"><span class="form-label">Nombre</span><input type="text" class="form-control" data-nuevo-nombre maxlength="100"></label>
+            <label class="campo"><span class="form-label">Apellido</span><input type="text" class="form-control" data-nuevo-apellido maxlength="100"></label>
+            <button type="button" class="btn btn-secondary" data-crear-autor><i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar autor</button>
+        </div>
+        <p class="selector-autores__mensaje" data-mensaje-autor role="status"></p>
+    </details>
+</div>
+<datalist id="editoriales-registradas">{% for e in form.editoriales %}<option value="{{ e }}">{% endfor %}</datalist>
+{% include 'componentes/_campo.html' with field=form.descripcion %}
+{% include 'componentes/_campo.html' with field=form.portada %}
+{% endblock %}
+
+{% block boton %}{% if libro %}Guardar cambios{% else %}Registrar libro{% endif %}{% endblock %}
+{% block cancelar_url %}{% if libro %}{% url 'catalogos:libro_detail' libro.pk %}{% else %}{% url 'catalogos:libro_list' %}{% endif %}{% endblock %}

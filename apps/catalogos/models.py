@@ -14,6 +14,16 @@ class Autor(models.Model):
     def __str__(self):
         return f"{self.apellido}, {self.nombre}"
 
+    @classmethod
+    def buscar_igual(cls, nombre, apellido, excluir_pk=None):
+        """Autor con el mismo nombre y apellido sin importar mayúsculas ni espacios.
+        Se compara en Python: con la intercalación "C" de PostgreSQL, iexact no iguala "Í" con "í"."""
+        clave = (nombre.strip().casefold(), apellido.strip().casefold())
+        for autor in cls.objects.exclude(pk=excluir_pk).only('nombre', 'apellido'):
+            if (autor.nombre.strip().casefold(), autor.apellido.strip().casefold()) == clave:
+                return autor
+        return None
+
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
@@ -45,6 +55,12 @@ class Libro(models.Model):
         verbose_name = 'Libro'
         verbose_name_plural = 'Libros'
         ordering = ['titulo']
+        constraints = [
+            # Restricción de integridad en la propia BD (no solo en el formulario)
+            models.CheckConstraint(condition=models.Q(anio_publicacion__gte=1000, anio_publicacion__lte=2100),
+                                   name='libro_anio_publicacion_valido',
+                violation_error_message='El año de publicación debe estar entre 1000 y 2100.'),
+        ]
 
     def __str__(self):
         return f"{self.titulo} ({self.isbn})"
@@ -74,6 +90,11 @@ class Ejemplar(models.Model):
     class Meta:
         verbose_name = 'Ejemplar'
         verbose_name_plural = 'Ejemplares'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(estado__in=['disponible', 'prestado', 'perdido', 'mantenimiento']),
+                                   name='ejemplar_estado_valido',
+                violation_error_message='El estado del ejemplar no es válido.'),
+        ]
 
     def __str__(self):
         return f"{self.codigo_barras} — {self.libro.titulo} [{self.get_estado_display()}]"

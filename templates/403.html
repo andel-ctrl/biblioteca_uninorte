@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Acceso restringido — Biblioteca{% endblock %}
+{% block content %}
+<div class="vacio vacio--error">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <p class="vacio__codigo">Error 403</p>
+    <h1>Esta sección es <em>restringida</em></h1>
+    <p>Tu cuenta no tiene permiso para abrirla. Si crees que es un error, acércate al mostrador de la biblioteca.</p>
+    <a class="btn btn-primary mt-2" href="{% url 'home' %}">Volver al inicio <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+</div>
+{% endblock %}

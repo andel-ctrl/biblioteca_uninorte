@@ -1,78 +1,43 @@
 {% extends 'base.html' %}
-{% block title %}Inventario de Ejemplares — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Inventario por estado — Biblioteca{% endblock %}
 {% block content %}
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Auditoría de Fondos</span>
-        <h1 class="display-6 fw-bold mb-1">Inventario por Estado</h1>
-        <p class="text-muted mb-0">Desglose físico de copias en catálogo, clasificadas según su disponibilidad y condición.</p>
+        <p class="encabezado__ref">Auditoría de fondos</p>
+        <h1 class="encabezado__titulo">Inventario por <em>estado</em></h1>
+        <p class="encabezado__bajada">Todas las copias físicas de la colección, agrupadas según su disponibilidad y condición.</p>
     </div>
-    <div>
-        <a href="{% url 'reportes:dashboard' %}" class="btn btn-outline-forest btn-sm">
-            <i class="bi bi-speedometer2 me-1"></i> Dashboard
-        </a>
-    </div>
-</div>
+</header>
+{% include 'componentes/_colofon.html' with n=ejemplares|length etiqueta='ejemplares en total' singular='ejemplar en total' %}
 
-<div class="row g-4 mb-5">
+<nav class="indice-estados" aria-label="Ir a un estado">
     {% for estado, items in por_estado.items %}
-    <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2">
-                    {% if estado == 'disponible' %}
-                    <span class="badge-status badge-disponible text-uppercase">Disponible</span>
-                    {% elif estado == 'prestado' %}
-                    <span class="badge-status badge-prestado text-uppercase">Prestado</span>
-                    {% elif estado == 'perdido' %}
-                    <span class="badge-status badge-vencido text-uppercase">Perdido</span>
-                    {% else %}
-                    <span class="badge-status badge-devuelto text-uppercase">{{ estado }}</span>
-                    {% endif %}
-                    <span class="text-muted small">({{ items.count }} copias físicas)</span>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th style="width: 180px;">Código de Barras</th>
-                            <th>Título de la Obra</th>
-                            <th>Ubicación</th>
-                            <th class="text-end">Ficha</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ej in items %}
-                        <tr>
-                            <td><code class="text-dark bg-light px-2 py-1 rounded">{{ ej.codigo_barras }}</code></td>
-                            <td>
-                                <a href="{% url 'catalogos:libro_detail' ej.libro.pk %}" class="text-decoration-none text-dark font-serif fw-semibold">
-                                    {{ ej.libro.titulo }}
-                                </a>
-                                <small class="text-muted d-block">{{ ej.libro.editorial }}, {{ ej.libro.anio_publicacion }}</small>
-                            </td>
-                            <td class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ ej.ubicacion }}</td>
-                            <td class="text-end">
-                                <a href="{% url 'catalogos:libro_detail' ej.libro.pk %}" class="btn btn-sm btn-outline-forest py-1 px-3" style="font-size: 0.8rem;">
-                                    Ver Libro
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center py-3 text-muted small">
-                                No hay ejemplares en este estado actualmente.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <a class="indice-estados__item" href="#estado-{{ estado }}">
+        <span class="cifra-grande">{{ items|length }}</span>
+        {% estado estado 'ejemplar' %}
+    </a>
     {% endfor %}
-</div>
+</nav>
 
+{% for estado, items in por_estado.items %}
+<section class="grupo-prestamos" id="estado-{{ estado }}" aria-labelledby="t-{{ estado }}">
+    <h2 id="t-{{ estado }}" class="grupo-prestamos__titulo">{% estado estado 'ejemplar' %} <span class="grupo-prestamos__n">{{ items|length }} ejemplar{{ items|length|pluralize:"es" }}</span></h2>
+    {% if items %}
+    <div class="tabla-desplazable"><table class="table tabla tabla--apilada table-hover">
+        <thead><tr><th scope="col">Código</th><th scope="col">Obra</th><th scope="col">Ubicación</th><th scope="col" class="text-end">Ficha</th></tr></thead>
+        <tbody>
+            {% for ej in items %}
+            <tr>
+                <td data-label="Código" class="mono">{{ ej.codigo_barras }}</td>
+                <td data-label="Obra" class="col-ancha"><div><span class="tabla__titulo">{{ ej.libro.titulo }}</span><span class="tabla__meta">{{ ej.libro.editorial }} · {{ ej.libro.anio_publicacion }}</span></div></td>
+                <td data-label="Ubicación">{{ ej.ubicacion }}</td>
+                <td data-label=""><div class="acciones"><a class="accion" href="{% url 'catalogos:libro_detail' ej.libro.pk %}">Ver libro</a></div></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% else %}<p class="grupo-prestamos__vacio">Ningún ejemplar en este estado.</p>{% endif %}
+</section>
+{% endfor %}
 {% endblock %}

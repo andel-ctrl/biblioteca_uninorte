@@ -18,4 +18,7 @@ urlpatterns = [
     # Autores
     path('autores/', views.autor_list, name='autor_list'),
     path('autores/nuevo/', views.autor_create, name='autor_create'),
+    path('autores/<int:pk>/editar/', views.autor_edit, name='autor_edit'),
+    path('autores/<int:pk>/eliminar/', views.autor_delete, name='autor_delete'),
+    path('autores/rapido/', views.autor_rapido, name='autor_rapido'),
 ]

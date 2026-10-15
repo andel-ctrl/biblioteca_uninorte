@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load biblioteca_ui %}
 {% load static biblioteca_ui %}
 {% block title %}Inicio — Biblioteca{% endblock %}
 {% block cuerpo_clase %}cuerpo-inicio{% endblock %}
@@ -7,9 +8,8 @@
 <section class="portada" aria-labelledby="saludo">
     <div class="portada__foto" data-parallax>
         <picture>
-            <source media="(max-width: 767.98px)" srcset="{% static 'img/biblioteca-estocolmo-960.webp' %}" type="image/webp">
-            <source srcset="{% static 'img/biblioteca-estocolmo-1920.webp' %}" type="image/webp">
-            <img src="{% static 'img/biblioteca-estocolmo-1920.jpg' %}" alt="Interior circular de la Biblioteca Pública de Estocolmo, con estanterías curvas llenas de libros" fetchpriority="high">
+            <source media="(max-width: 767.98px)" srcset="{% static 'img/biblioteca-uninorte-fachada-900.jpg' %}">
+            <img src="{% static 'img/biblioteca-uninorte-fachada.jpg' %}" alt="Fachada de la Biblioteca Karl C. Parrish Jr., con su escalinata y palmeras" fetchpriority="high">
         </picture>
     </div>
     <div class="container portada__contenido">
@@ -31,7 +31,7 @@
                     </button>
                     <div class="indicador__detalle" id="det-activos" role="region" aria-label="Libros en tus manos">
                         {% for p in estado.activos %}
-                        <p><strong>{{ p.ejemplar.libro.titulo }}</strong><span>Vence el {{ p.fecha_vencimiento|date:"d/m/Y" }} · en {{ p.fecha_vencimiento|timeuntil }}</span></p>
+                        <p><strong>{{ p.ejemplar.libro.titulo }}</strong><span>Vence el {{ p.fecha_vencimiento|date:"d/m/Y" }} · {{ p.fecha_vencimiento|faltan }}</span></p>
                         {% empty %}<p>No tienes libros prestados en este momento.</p>{% endfor %}
                     </div>
                 </li>
@@ -55,21 +55,21 @@
                     </button>
                     <div class="indicador__detalle" id="det-vencidos" role="region" aria-label="Préstamos vencidos">
                         {% for p in estado.vencidos %}
-                        <p><strong>{{ p.ejemplar.libro.titulo }}</strong><span>{{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} de retraso · mora ${{ p.multa_estimada }}</span></p>
+                        <p><strong>{{ p.ejemplar.libro.titulo }}</strong><span>{{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} de retraso · mora {{ p.multa_estimada|pesos }}</span></p>
                         {% empty %}<p>Estás al día: ningún préstamo vencido.</p>{% endfor %}
                     </div>
                 </li>
                 {# Multas #}
                 <li class="indicador {% if estado.multas_total or estado.mora_total %}indicador--alerta{% endif %}">
                     <button type="button" class="indicador__boton" aria-expanded="false" aria-controls="det-multas">
-                        <span class="indicador__cifra indicador__cifra--dinero">${{ estado.multas_total|floatformat:0 }}</span>
+                        <span class="indicador__cifra indicador__cifra--dinero">{{ estado.multas_total|pesos }}</span>
                         <span class="indicador__nombre">Multas por pagar</span>
                     </button>
                     <div class="indicador__detalle" id="det-multas" role="region" aria-label="Multas">
                         {% for d in estado.multas %}
-                        <p><strong>{{ d.prestamo.ejemplar.libro.titulo }}</strong><span>Multa de ${{ d.monto_multa }} · registrada el {{ d.fecha_devolucion|date:"d/m/Y" }}</span></p>
+                        <p><strong>{{ d.prestamo.ejemplar.libro.titulo }}</strong><span>Multa de {{ d.monto_multa|pesos }} · registrada el {{ d.fecha_devolucion|date:"d/m/Y" }}</span></p>
                         {% empty %}<p>No tienes multas pendientes de pago.</p>{% endfor %}
-                        {% if estado.mora_total %}<p><strong>Mora en curso: ${{ estado.mora_total }}</strong><span>Se convierte en multa al devolver los libros vencidos.</span></p>{% endif %}
+                        {% if estado.mora_total %}<p><strong>Mora en curso: {{ estado.mora_total|pesos }}</strong><span>Se convierte en multa al devolver los libros vencidos.</span></p>{% endif %}
                     </div>
                 </li>
             </ul>
@@ -77,7 +77,7 @@
         </aside>
         {% endif %}
     </div>
-    <p class="portada__credito">Biblioteca Pública de Estocolmo · Foto: Paul Povoroznuk / Unsplash</p>
+    <p class="portada__credito">Biblioteca Karl C. Parrish Jr.</p>
 </section>
 {% endblock %}
 
@@ -102,28 +102,61 @@
 {% if novedades %}
 <section class="novedades" aria-labelledby="titulo-novedades">
     <header class="seccion-cabeza revelar">
-        <p class="encabezado__ref"><span class="signatura">NOV</span> Novedades de la colección</p>
+        <p class="encabezado__ref">Novedades de la colección</p>
         <h2 id="titulo-novedades" class="seccion-cabeza__titulo">Recién <em>llegados</em></h2>
     </header>
-    {% include 'componentes/_colofon.html' with n=novedades|length etiqueta='últimas incorporaciones' %}
+    {% include 'componentes/_colofon.html' with n=novedades|length etiqueta='últimas incorporaciones' singular='última incorporación' %}
 
     <div class="novedades__composicion">
         {% with destacado=novedades.0 %}
-        <article class="destacado revelar">
-            <a class="destacado__portada" href="{% url 'catalogos:libro_detail' destacado.pk %}" tabindex="-1" aria-hidden="true">
-                {% if destacado.portada %}<img src="{{ destacado.portada.url }}" alt="" loading="lazy">
-                {% else %}<div class="lomo lomo--{{ destacado.pk|stringformat:'d'|slice:'-1:' }}"><span class="lomo__inicial">{{ destacado.titulo|first|upper }}</span><span class="lomo__anio">{{ destacado.anio_publicacion }}</span></div>{% endif %}
+        <article class="destacado destacado3d revelar">
+            {# Libro en 3D acostado sobre la pila de novedades; se levanta al pasar el cursor o al enfocar sus enlaces #}
+            <a class="escena3d {% if not destacado.portada %}lomo--{{ destacado.pk|stringformat:'d'|slice:'-1:' }}{% endif %}" href="{% url 'catalogos:libro_detail' destacado.pk %}" tabindex="-1" aria-hidden="true">
+                <span class="pila3d">
+                    <span class="pila3d__suelo"></span>
+                    <span class="pila3d__libro">
+                        <span class="pila3d__tapa"><span class="escena3d__sombra"></span></span>
+                        <span class="pila3d__canto pila3d__canto--izq"></span>
+                        <span class="pila3d__canto pila3d__canto--der"></span>
+                        <span class="pila3d__lomo"><span>Colección</span></span>
+                    </span>
+                    <span class="pila3d__libro">
+                        <span class="pila3d__tapa"></span>
+                        <span class="pila3d__canto pila3d__canto--izq"></span>
+                        <span class="pila3d__canto pila3d__canto--der"></span>
+                        <span class="pila3d__lomo"><span>Uninorte</span></span>
+                    </span>
+                    <span class="pila3d__libro">
+                        <span class="pila3d__tapa"></span>
+                        <span class="pila3d__canto pila3d__canto--izq"></span>
+                        <span class="pila3d__canto pila3d__canto--der"></span>
+                        <span class="pila3d__lomo"><span>Biblioteca</span></span>
+                    </span>
+                </span>
+                <span class="libro3d">
+                    <span class="libro3d__cara libro3d__cara--frente">
+                        {% if destacado.portada %}<img src="{{ destacado.portada.url }}" alt="" loading="lazy">
+                        {% else %}<span class="lomo lomo--{{ destacado.pk|stringformat:'d'|slice:'-1:' }}"><span class="lomo__inicial">{{ destacado.titulo|first|upper }}</span><span class="lomo__anio">{{ destacado.anio_publicacion }}</span></span>{% endif %}
+                    </span>
+                    <span class="libro3d__cara libro3d__cara--atras"></span>
+                    <span class="libro3d__cara libro3d__cara--lomo"><span>{{ destacado.titulo|truncatechars:34 }}</span></span>
+                    <span class="libro3d__cara libro3d__cara--paginas"></span>
+                    <span class="libro3d__cara libro3d__cara--arriba"></span>
+                    <span class="libro3d__cara libro3d__cara--abajo"></span>
+                </span>
             </a>
             <div class="destacado__texto">
                 <p class="sello" title="Fecha de incorporación al catálogo">Ingresó · {{ destacado.creado_en|date:"d.m.Y" }}</p>
                 <p class="registro__ref">{{ destacado.categoria.nombre|default:"General" }}<span class="sep">/</span>{{ destacado.anio_publicacion }}<span class="sep">/</span>{{ destacado.editorial }}</p>
                 <h3 class="destacado__titulo"><a href="{% url 'catalogos:libro_detail' destacado.pk %}">{{ destacado.titulo }}</a></h3>
                 <p class="destacado__autores">{% if destacado.autores.all %}{{ destacado.autores.all|join:"; " }}{% else %}Autor no especificado{% endif %}</p>
-                {% if destacado.descripcion %}<p class="destacado__resumen">{{ destacado.descripcion|truncatewords:42 }}</p>{% endif %}
-                <div class="destacado__pie">
-                    {% if destacado.n_disponibles %}{% estado 'disponible' 'libro' %}{% else %}{% estado 'agotado' 'libro' %}{% endif %}
-                    <span class="registro__copias">{{ destacado.n_disponibles }} de {{ destacado.n_ejemplares }} ejemplar{{ destacado.n_ejemplares|pluralize:"es" }}</span>
-                    <a class="btn btn-outline-primary btn-sm" href="{% url 'catalogos:libro_detail' destacado.pk %}">Ver ficha <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                <div class="destacado__detalle">
+                    {% if destacado.descripcion %}<p class="destacado__resumen">{{ destacado.descripcion|truncatewords:42 }}</p>{% endif %}
+                    <div class="destacado__pie">
+                        {% if destacado.n_disponibles %}{% estado 'disponible' 'libro' %}{% else %}{% estado 'agotado' 'libro' %}{% endif %}
+                        <span class="registro__copias"><i class="bi bi-book" aria-hidden="true"></i> {{ destacado.n_disponibles }} de {{ destacado.n_ejemplares }} ejemplar{{ destacado.n_ejemplares|pluralize:"es" }}</span>
+                        <a class="btn btn-outline-primary btn-sm" href="{% url 'catalogos:libro_detail' destacado.pk %}">Ver ficha <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                    </div>
                 </div>
             </div>
         </article>
@@ -135,8 +168,7 @@
             <li class="reciente revelar" style="--i: {{ forloop.counter }}">
                 <span class="sello sello--vertical" title="Fecha de incorporación">{{ libro.creado_en|date:"d.m" }}</span>
                 <a class="reciente__portada" href="{% url 'catalogos:libro_detail' libro.pk %}" tabindex="-1" aria-hidden="true">
-                    {% if libro.portada %}<img src="{{ libro.portada.url }}" alt="" loading="lazy">
-                    {% else %}<div class="lomo lomo--{{ libro.pk|stringformat:'d'|slice:'-1:' }}"><span class="lomo__inicial">{{ libro.titulo|first|upper }}</span><span class="lomo__anio">{{ libro.anio_publicacion }}</span></div>{% endif %}
+                    {% include 'componentes/_tomo.html' %}
                 </a>
                 <div class="reciente__texto">
                     <h3 class="reciente__titulo"><a href="{% url 'catalogos:libro_detail' libro.pk %}">{{ libro.titulo }}</a></h3>
@@ -154,7 +186,7 @@
 <!-- Selección del catálogo general -->
 <section class="seleccion" aria-labelledby="titulo-seleccion">
     <header class="seccion-cabeza revelar">
-        <p class="encabezado__ref"><span class="signatura">CAT</span> Colección universitaria</p>
+        <p class="encabezado__ref">Colección universitaria</p>
         <h2 id="titulo-seleccion" class="seccion-cabeza__titulo">Del <em>catálogo</em></h2>
     </header>
     {% include 'componentes/_colofon.html' with dato='Selección por orden alfabético' %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% comment %}
+Plantilla común de formularios. Bloques: ref, titulo, bajada, form_atributos, antes_campos,
+campos (por defecto: todos los campos de "form"), despues_campos, boton, cancelar_url, notas.
+{% endcomment %}
+{% block content %}
+<header class="encabezado">
+    <div>
+        <p class="encabezado__ref">{% block ref %}{% endblock %}</p>
+        <h1 class="encabezado__titulo">{% block titulo %}{% endblock %}</h1>
+        <p class="encabezado__bajada">{% block bajada %}{% endblock %}</p>
+    </div>
+</header>
+{% include 'componentes/_colofon.html' with dato='Los campos con * son obligatorios' %}
+
+<div class="formulario">
+    <aside class="formulario__notas">{% block notas %}{% endblock %}</aside>
+
+    <form method="post" class="formulario__cuerpo" data-avisar-cambios {% block form_atributos %}{% endblock %} novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="aviso aviso--error mb-3" role="alert"><i class="bi bi-x-octagon" aria-hidden="true"></i>
+            <div class="aviso__texto">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>
+        {% endif %}
+        {% block antes_campos %}{% endblock %}
+        <div class="campos">
+            {% block campos %}{% for field in form %}{% include 'componentes/_campo.html' %}{% endfor %}{% endblock %}
+        </div>
+        {% block despues_campos %}{% endblock %}
+        <div class="formulario__acciones">
+            <button type="submit" class="btn btn-primary">{% block boton %}Guardar{% endblock %} <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+            <a href="{% block cancelar_url %}{% url 'home' %}{% endblock %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

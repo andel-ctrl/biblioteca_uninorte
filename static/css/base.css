@@ -1,6 +1,9 @@
 /* ==========================================================================
    BASE: tipografía, enlaces, foco, selección y movimiento reducido
    ========================================================================== */
+/* Recorte a nivel de ventana: los adornos de ancho completo (100vw) no crean scroll horizontal */
+html { overflow-x: clip; }
+
 body {
     background: var(--c-hueso);
     color: var(--t-principal);
@@ -11,17 +14,19 @@ body {
 
 h1, h2, h3, h4, .serif {
     font-family: var(--f-serif);
-    font-weight: 500;
-    letter-spacing: -0.015em;
+    font-weight: 400;
+    letter-spacing: -0.005em;
     color: var(--c-tinta);
     text-wrap: balance;
+    overflow-wrap: break-word; /* una palabra larga nunca se sale de su columna */
 }
 h5, h6 { font-family: var(--f-sans); font-weight: 600; color: var(--c-tinta); }
 
 .mono, code, kbd, .font-monospace {
     font-family: var(--f-mono) !important;
-    font-size: 0.86em;
-    letter-spacing: 0;
+    font-size: 0.9em;
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
 }
 code { color: var(--c-borgona); }
 

@@ -1,165 +1,168 @@
 {% extends 'base.html' %}
-{% block title %}Dashboard & Métricas — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Mesa de trabajo — Biblioteca{% endblock %}
 {% block content %}
 
-<!-- ENCABEZADO -->
-<div class="mb-4 pt-2">
-    <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Panel Administrativo</span>
-    <h1 class="display-6 fw-bold mb-1">Métricas & Operaciones</h1>
-    <p class="text-muted mb-0">Resumen en tiempo real del catálogo, estado de ejemplares y flujo de préstamos.</p>
-</div>
+<header class="encabezado">
+    <div>
+        <p class="encabezado__ref">Operación diaria · {{ hoy|date:"l j \d\e F"|lower|capfirst }}</p>
+        <h1 class="encabezado__titulo">Mesa de <em>trabajo</em></h1>
+        <p class="encabezado__bajada">
+            {% if tareas %}Tienes {{ tareas }} asunto{{ tareas|pluralize }} que atender hoy. Empieza por las solicitudes más antiguas.
+            {% else %}Todo al día: no hay solicitudes ni préstamos que requieran atención.{% endif %}
+        </p>
+    </div>
+    <div class="encabezado__acciones">
+        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-primary">Todos los préstamos</a>
+        <a href="{% url 'catalogos:libro_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo libro</a>
+    </div>
+</header>
+{% include 'componentes/_colofon.html' with n=tareas etiqueta='tareas abiertas' singular='tarea abierta' %}
 
-<!-- KPIs FILA PRINCIPAL -->
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div>
-                <div class="kpi-number">{{ total_libros }}</div>
-                <div class="kpi-label">Títulos en Catálogo</div>
-            </div>
-            <div class="kpi-icon-wrap kpi-icon-forest">
-                <i class="bi bi-journals"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div>
-                <div class="kpi-number text-success" style="color: var(--color-forest) !important;">{{ disponibles }}</div>
-                <div class="kpi-label">Copias Disponibles</div>
-            </div>
-            <div class="kpi-icon-wrap kpi-icon-forest">
-                <i class="bi bi-check-circle"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div>
-                <div class="kpi-number" style="color: var(--color-amber) !important;">{{ prestados }}</div>
-                <div class="kpi-label">Ejemplares Prestados</div>
-            </div>
-            <div class="kpi-icon-wrap kpi-icon-amber">
-                <i class="bi bi-arrow-left-right"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div>
-                <div class="kpi-number" style="color: var(--color-clay) !important;">{{ vencidos }}</div>
-                <div class="kpi-label">Préstamos en Mora</div>
-            </div>
-            <div class="kpi-icon-wrap kpi-icon-clay">
-                <i class="bi bi-exclamation-triangle"></i>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="mesa">
+    <!-- ==================== Columna de acción ==================== -->
+    <div class="mesa__accion">
 
-<!-- SEGUNDA FILA: ALERTAS Y ACCESOS RÁPIDOS -->
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card p-3 shadow-sm h-100 d-flex flex-row justify-content-between align-items-center">
-            <div>
-                <span class="small text-muted d-block">Solicitudes en Espera</span>
-                <span class="fs-3 fw-bold font-serif" style="color: var(--color-amber);">{{ pendientes }}</span>
-            </div>
-            <a href="{% url 'prestamos:prestamo_list' %}?estado=pendiente" class="btn btn-sm btn-outline-forest">
-                Revisar solicitudes
-            </a>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card p-3 shadow-sm h-100 d-flex flex-row justify-content-between align-items-center">
-            <div>
-                <span class="small text-muted d-block">Usuarios Registrados</span>
-                <span class="fs-3 fw-bold font-serif text-dark">{{ total_usuarios }}</span>
-            </div>
-            <a href="{% url 'usuarios:usuario_list' %}" class="btn btn-sm btn-outline-forest">
-                Gestionar
-            </a>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card p-3 shadow-sm h-100 d-flex flex-row justify-content-between align-items-center">
-            <div>
-                <span class="small text-muted d-block">Copias Reportadas Perdidas</span>
-                <span class="fs-3 fw-bold font-serif" style="color: var(--color-clay);">{{ perdidos }}</span>
-            </div>
-            <a href="{% url 'reportes:inventario' %}" class="btn btn-sm btn-outline-forest">
-                Ver inventario
-            </a>
-        </div>
-    </div>
-</div>
+        <!-- Bandeja de solicitudes -->
+        <section class="bandeja" aria-labelledby="t-solicitudes">
+            <header class="bandeja__cabeza">
+                <span class="bandeja__cifra {% if solicitudes %}bandeja__cifra--activa{% endif %}">{{ solicitudes|length }}</span>
+                <div>
+                    <h2 id="t-solicitudes" class="bandeja__titulo">Solicitudes por <em>aprobar</em></h2>
+                    <p class="bandeja__nota">Aprobar en un clic asigna {{ dias_defecto }} días de plazo (vence el {{ fecha_aprobacion_defecto|date:"d/m/Y" }}).</p>
+                </div>
+            </header>
+            {% for p in solicitudes %}
+            <article class="tarea">
+                <div class="tarea__quien">
+                    <strong>{{ p.usuario.get_nombre_completo }}</strong>
+                    <span class="mono">{{ p.usuario.codigo_universitario }}</span>
+                </div>
+                <div class="tarea__que">
+                    <a class="tarea__libro" href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a>
+                    <span class="tabla__meta">Ejemplar <span class="mono">{{ p.ejemplar.codigo_barras }}</span> · {% with t=p.fecha_solicitud|timesince %}{% if t == '0 minutos' %}recién solicitado{% else %}espera desde hace {{ t }}{% endif %}{% endwith %}</span>
+                    {% if p.bloqueo %}<span class="tarea__bloqueo"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ p.bloqueo }}: no se puede aprobar.</span>{% endif %}
+                </div>
+                <div class="acciones">
+                    {% if not p.bloqueo %}
+                    <form method="post" action="{% url 'prestamos:prestamo_aprobar' p.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="fecha_vencimiento" value="{{ fecha_aprobacion_defecto|date:'Y-m-d' }}">
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="accion accion--principal"><i class="bi bi-check2" aria-hidden="true"></i> Aprobar · {{ dias_defecto }} días</button>
+                    </form>
+                    <a class="accion" href="{% url 'prestamos:prestamo_aprobar' p.pk %}">Elegir fecha</a>
+                    {% endif %}
+                    <a class="accion accion--peligro" href="{% url 'prestamos:prestamo_rechazar' p.pk %}"><i class="bi bi-x" aria-hidden="true"></i> Rechazar</a>
+                </div>
+            </article>
+            {% empty %}
+            <p class="bandeja__vacia"><svg class="bandeja__estrella" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z" fill="currentColor"/></svg> Bandeja al día: no hay solicitudes esperando.</p>
+            {% endfor %}
+        </section>
 
-<!-- ÚLTIMOS PRÉSTAMOS -->
-<div class="card shadow-sm mb-5">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-0 font-serif">Últimos Movimientos de Préstamos</h5>
-            <small class="text-muted">Registro de solicitudes recientes realizadas por usuarios.</small>
-        </div>
-        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-sm btn-outline-forest">
-            Ver todos
-        </a>
+        <!-- Requiere atención: vencidos y próximos a vencer -->
+        <section class="bandeja" aria-labelledby="t-atencion">
+            <header class="bandeja__cabeza">
+                <span class="bandeja__cifra {% if vencidos_lista %}bandeja__cifra--alerta{% endif %}">{{ atencion }}</span>
+                <div>
+                    <h2 id="t-atencion" class="bandeja__titulo">Requiere <em>atención</em></h2>
+                    <p class="bandeja__nota">{{ vencidos_lista|length }} vencido{{ vencidos_lista|length|pluralize }} y {{ proximos|length }} por vencer en los próximos 3 días.</p>
+                </div>
+            </header>
+            {% for p in vencidos_lista %}
+            <article class="tarea tarea--alerta">
+                <div class="tarea__quien">
+                    <strong>{{ p.usuario.get_nombre_completo }}</strong>
+                    <span class="mono">{{ p.usuario.codigo_universitario }}</span>
+                </div>
+                <div class="tarea__que">
+                    <a class="tarea__libro" href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a>
+                    <span class="tarea__retraso">{% estado 'vencido' 'prestamo' %} {{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} de retraso · mora {{ p.multa_estimada|pesos }}</span>
+                </div>
+                <div class="acciones">
+                    <a class="accion accion--principal" href="{% url 'prestamos:devolucion_registrar' p.pk %}"><i class="bi bi-arrow-return-left" aria-hidden="true"></i> Registrar devolución</a>
+                    <a class="accion" href="{% url 'prestamos:prestamo_detail' p.pk %}">Ver</a>
+                </div>
+            </article>
+            {% endfor %}
+            {% for p in proximos %}
+            <article class="tarea">
+                <div class="tarea__quien">
+                    <strong>{{ p.usuario.get_nombre_completo }}</strong>
+                    <span class="mono">{{ p.usuario.codigo_universitario }}</span>
+                </div>
+                <div class="tarea__que">
+                    <a class="tarea__libro" href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a>
+                    <span class="tabla__meta">{% if p.dias_restantes == 0 %}Vence hoy{% else %}Vence en {{ p.dias_restantes }} día{{ p.dias_restantes|pluralize }}{% endif %} · {{ p.fecha_vencimiento|date:"d/m/Y" }}</span>
+                </div>
+                <div class="acciones">
+                    <a class="accion" href="{% url 'prestamos:devolucion_registrar' p.pk %}"><i class="bi bi-arrow-return-left" aria-hidden="true"></i> Registrar devolución</a>
+                </div>
+            </article>
+            {% endfor %}
+            {% if not vencidos_lista and not proximos %}
+            <p class="bandeja__vacia"><svg class="bandeja__estrella" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z" fill="currentColor"/></svg> Sin préstamos vencidos ni por vencer.</p>
+            {% endif %}
+        </section>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Usuario</th>
-                    <th>Obra / Libro</th>
-                    <th>Fecha Solicitud</th>
-                    <th>Estado</th>
-                    <th class="text-end">Detalle</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in ultimos_prestamos %}
-                <tr>
-                    <td class="text-muted small">#{{ p.id }}</td>
-                    <td class="fw-medium">{{ p.usuario.get_nombre_completo }}</td>
-                    <td>{{ p.ejemplar.libro.titulo|truncatechars:40 }}</td>
-                    <td class="text-muted small">{{ p.fecha_solicitud|date:"d M Y, H:i" }}</td>
-                    <td>
-                        {% if p.estado == 'pendiente' %}
-                        <span class="badge-status badge-prestado">Pendiente</span>
-                        {% elif p.estado == 'activo' %}
-                        <span class="badge-status badge-disponible">Activo</span>
-                        {% elif p.estado == 'vencido' %}
-                        <span class="badge-status badge-vencido">Vencido</span>
-                        {% elif p.estado == 'devuelto' %}
-                        <span class="badge-status badge-devuelto">Devuelto</span>
-                        {% elif p.estado == 'rechazado' %}
-                        <span class="badge-status badge-vencido">Rechazado</span>
-                        {% elif p.estado == 'perdido' %}
-                        <span class="badge-status badge-perdido">Perdido</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end">
-                        {% if p.estado in 'activo,vencido' %}
-                        <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="btn btn-sm btn-forest py-1 px-2 me-1" style="font-size: 0.78rem;" title="Registrar devolución rápida">
-                            <i class="bi bi-arrow-return-left me-1"></i> Devolver
-                        </a>
-                        {% endif %}
-                        <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="btn btn-sm btn-outline-forest py-1 px-3" style="font-size: 0.8rem;">
-                            Ver
-                        </a>
-                    </td>
-                </tr>
+
+    <!-- ==================== Columna de contexto ==================== -->
+    <aside class="mesa__contexto" aria-label="Resumen de la biblioteca">
+
+        <section class="libro-mayor" aria-labelledby="t-coleccion">
+            <h2 id="t-coleccion" class="libro-mayor__titulo">La colección hoy</h2>
+            <p class="libro-mayor__total"><span class="cifra-grande">{{ total_libros }}</span> títulos · <span class="cifra">{{ inventario.total }}</span> ejemplares</p>
+            {% if inventario.total %}
+            <div class="reparto" role="img" aria-label="Ejemplares: {{ inventario.disponible }} disponibles, {{ inventario.prestado }} prestados, {{ inventario.mantenimiento }} en mantenimiento, {{ inventario.perdido }} perdidos">
+                <span class="reparto__parte reparto__parte--verde" style="flex-grow: {{ inventario.disponible }}"></span>
+                <span class="reparto__parte reparto__parte--tinta" style="flex-grow: {{ inventario.prestado }}"></span>
+                <span class="reparto__parte reparto__parte--lila" style="flex-grow: {{ inventario.mantenimiento }}"></span>
+                <span class="reparto__parte reparto__parte--grafito" style="flex-grow: {{ inventario.perdido }}"></span>
+            </div>
+            {% endif %}
+            <dl class="libro-mayor__lista">
+                <div><dt><span class="punto punto--verde"></span>Disponibles</dt><dd class="cifra">{{ inventario.disponible }}</dd></div>
+                <div><dt><span class="punto punto--tinta"></span>Prestados</dt><dd class="cifra">{{ inventario.prestado }}</dd></div>
+                <div><dt><span class="punto punto--lila"></span>En mantenimiento</dt><dd class="cifra">{{ inventario.mantenimiento }}</dd></div>
+                <div><dt><span class="punto punto--grafito"></span>Perdidos</dt><dd class="cifra">{{ inventario.perdido }}</dd></div>
+            </dl>
+            <a class="enlace" href="{% url 'reportes:inventario' %}">Ver inventario por estado</a>
+
+            <h3 class="libro-mayor__subtitulo">Lectores</h3>
+            <dl class="libro-mayor__lista">
+                <div><dt>Activos</dt><dd class="cifra">{{ usuarios_resumen.activos }}</dd></div>
+                <div><dt>Bloqueados</dt><dd class="cifra {% if usuarios_resumen.bloqueados %}text-danger{% endif %}">{{ usuarios_resumen.bloqueados }}</dd></div>
+                <div><dt>Préstamos activos</dt><dd class="cifra">{{ activos }}</dd></div>
+            </dl>
+            <a class="enlace" href="{% url 'usuarios:usuario_list' %}">Gestionar usuarios</a>
+        </section>
+
+        <nav class="atajos" aria-label="Accesos rápidos">
+            <h2 class="libro-mayor__titulo">Accesos rápidos</h2>
+            <a href="{% url 'catalogos:libro_create' %}"><i class="bi bi-journal-plus" aria-hidden="true"></i> Registrar un libro</a>
+            <a href="{% url 'usuarios:usuario_create' %}"><i class="bi bi-person-plus" aria-hidden="true"></i> Registrar un lector</a>
+            <a href="{% url 'reportes:prestamos_activos' %}"><i class="bi bi-clock-history" aria-hidden="true"></i> Activos y vencidos</a>
+            <a href="{% url 'prestamos:multa_config' %}"><i class="bi bi-cash-coin" aria-hidden="true"></i> Tarifa de multa</a>
+        </nav>
+
+        <section class="actividad" aria-labelledby="t-actividad">
+            <h2 id="t-actividad" class="libro-mayor__titulo">Actividad reciente</h2>
+            <ol class="actividad__lista">
+                {% for e in eventos %}
+                <li class="actividad__evento actividad__evento--{{ e.tipo }}">
+                    <span class="actividad__hora">{% with t=e.fecha|timesince %}{% if t == '0 minutos' %}hace un momento{% else %}hace {{ t }}{% endif %}{% endwith %}</span>
+                    <a href="{% url 'prestamos:prestamo_detail' e.prestamo.pk %}">
+                        {% if e.tipo == 'solicitud' %}{{ e.prestamo.usuario.get_nombre_completo }} solicitó <em>{{ e.prestamo.ejemplar.libro.titulo }}</em>
+                        {% elif e.tipo == 'perdida' %}Pérdida registrada: <em>{{ e.prestamo.ejemplar.libro.titulo }}</em>
+                        {% else %}{{ e.prestamo.usuario.get_nombre_completo }} devolvió <em>{{ e.prestamo.ejemplar.libro.titulo }}</em>{% endif %}
+                    </a>
+                </li>
                 {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">
-                        No hay movimientos de préstamo registrados recientemente.
-                    </td>
-                </tr>
+                <li class="actividad__evento">Todavía no hay movimientos.</li>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            </ol>
+        </section>
+    </aside>
 </div>
-
 {% endblock %}

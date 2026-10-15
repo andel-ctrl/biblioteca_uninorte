@@ -12,13 +12,18 @@ class UsuarioBibliotecaForm(forms.ModelForm):
     email = forms.EmailField(label='Correo electrónico', widget=forms.EmailInput(attrs={'class': 'form-control'}))
     nueva_password = forms.CharField(
         required=False, label='Nueva contraseña',
-        help_text='Déjela vacía para conservar la contraseña actual.',
+        help_text='Déjala vacía para conservar la contraseña actual.',
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'}),
     )
 
     class Meta:
         model = UsuarioBiblioteca
         fields = ['codigo_universitario', 'identificacion', 'rol', 'carrera', 'estado', 'telefono']
+        labels = {'telefono': 'Teléfono'}
+        error_messages = {
+            'codigo_universitario': {'unique': 'Ya existe un usuario con ese código universitario.'},
+            'identificacion': {'unique': 'Ya existe un usuario con esa identificación.'},
+        }
         widgets = {
             'codigo_universitario': forms.TextInput(attrs={'class': 'form-control'}),
             'identificacion': forms.TextInput(attrs={'class': 'form-control'}),
@@ -52,13 +57,13 @@ class UsuarioBibliotecaForm(forms.ModelForm):
     def clean_estado(self):
         estado = self.cleaned_data['estado']
         if self.es_su_propia_cuenta() and estado != 'activo':
-            raise forms.ValidationError('No puede bloquear su propia cuenta.')
+            raise forms.ValidationError('No puedes bloquear tu propia cuenta.')
         return estado
 
     def clean_rol(self):
         rol = self.cleaned_data['rol']
         if self.es_su_propia_cuenta() and self.instance.rol == 'bibliotecario' and rol != 'bibliotecario':
-            raise forms.ValidationError('No puede quitarse a sí mismo el rol de bibliotecario.')
+            raise forms.ValidationError('No puedes quitarte a ti mismo el rol de bibliotecario.')
         return rol
 
     def clean_nueva_password(self):

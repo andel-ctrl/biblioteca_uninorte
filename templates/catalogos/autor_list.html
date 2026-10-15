@@ -1,34 +1,48 @@
 {% extends 'base.html' %}
-{% block title %}Autores{% endblock %}
+{% block title %}Autores — Biblioteca{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Autores</h4>
-    {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-    <a href="{% url 'catalogos:autor_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo autor</a>
+<header class="encabezado">
+    <div>
+        <p class="encabezado__ref">Registro de autores</p>
+        <h1 class="encabezado__titulo"><em>Autores</em></h1>
+        <p class="encabezado__bajada">Personas que firman los títulos de la colección, con el número de libros asociados.</p>
+    </div>
+    {% if es_bibliotecario %}
+    <div class="encabezado__acciones">
+        <a href="{% url 'catalogos:autor_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo autor</a>
+    </div>
     {% endif %}
+</header>
+{% include 'componentes/_colofon.html' with n=autores|length etiqueta='autores registrados' singular='autor registrado' %}
+
+{% if autores %}
+<div class="tabla-desplazable"><table class="table tabla tabla--apilada table-hover">
+    <thead>
+        <tr><th scope="col">Autor</th><th scope="col">Biografía</th><th scope="col" class="text-end">Libros</th>{% if es_bibliotecario %}<th scope="col" class="text-end">Acciones</th>{% endif %}</tr>
+    </thead>
+    <tbody>
+        {% for autor in autores %}
+        <tr>
+            <td data-label="Autor"><span class="tabla__titulo">{{ autor.apellido }}, <em>{{ autor.nombre }}</em></span></td>
+            <td data-label="Biografía" class="text-body-secondary">{{ autor.biografia|truncatewords:18|default:"—" }}</td>
+            <td data-label="Libros" class="text-end cifra">{{ autor.total_libros }}</td>
+            {% if es_bibliotecario %}
+            <td data-label="">
+                <div class="acciones">
+                    <a href="{% url 'catalogos:autor_edit' autor.pk %}" class="accion" aria-label="Editar a {{ autor }}">Editar</a>
+                    {% if not autor.total_libros %}<a href="{% url 'catalogos:autor_delete' autor.pk %}" class="accion accion--peligro" aria-label="Eliminar a {{ autor }}">Eliminar</a>{% endif %}
+                </div>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table></div>
+{% else %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>No hay autores registrados</h2>
+    {% if es_bibliotecario %}<a class="btn btn-primary mt-2" href="{% url 'catalogos:autor_create' %}">Registrar el primero</a>{% endif %}
 </div>
-<div class="card shadow-sm">
-    <table class="table table-hover mb-0">
-        <thead>
-            <tr>
-                <th>Apellido</th>
-                <th>Nombre</th>
-                <th class="text-end">Libros</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for autor in autores %}
-            <tr>
-                <td>{{ autor.apellido }}</td>
-                <td>{{ autor.nombre }}</td>
-                <td class="text-end">{{ autor.total_libros }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3" class="text-center py-4 text-muted">No hay autores registrados.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+{% endif %}
 {% endblock %}

@@ -81,4 +81,120 @@
             revelables.forEach(function (el) { observador.observe(el); });
         }
     }
+    // Selector de autores del formulario del libro: buscar, ver elegidos y agregar uno nuevo sin salir
+    var selector = document.querySelector('[data-selector-autores]');
+    if (selector) {
+        var lista = selector.querySelector('[data-lista-autores]');
+        var elegidos = selector.querySelector('[data-elegidos]');
+        var ninguno = selector.querySelector('[data-ninguno]');
+        var filtro = selector.querySelector('[data-filtro-autores]');
+        var sinResultados = selector.querySelector('[data-sin-resultados]');
+
+        var pintarElegidos = function () {
+            elegidos.querySelectorAll('.etiqueta-autor').forEach(function (e) { e.remove(); });
+            var marcados = lista.querySelectorAll('input[type=checkbox]:checked');
+            ninguno.hidden = marcados.length > 0;
+            marcados.forEach(function (casilla) {
+                var etiqueta = document.createElement('span');
+                etiqueta.className = 'etiqueta-autor';
+                etiqueta.textContent = casilla.parentElement.querySelector('span').textContent;
+                var quitar = document.createElement('button');
+                quitar.type = 'button';
+                quitar.setAttribute('aria-label', 'Quitar ' + etiqueta.textContent);
+                quitar.innerHTML = '<i class="bi bi-x" aria-hidden="true"></i>';
+                quitar.addEventListener('click', function () { casilla.checked = false; pintarElegidos(); });
+                etiqueta.appendChild(quitar);
+                elegidos.appendChild(etiqueta);
+            });
+        };
+        lista.addEventListener('change', pintarElegidos);
+        pintarElegidos();
+
+        var normalizar = function (t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); };
+        filtro.addEventListener('input', function () {
+            var q = normalizar(filtro.value.trim()), visibles = 0;
+            lista.querySelectorAll('.selector-autores__opcion').forEach(function (op) {
+                var ver = !q || normalizar(op.textContent).indexOf(q) !== -1;
+                op.hidden = !ver;
+                if (ver) visibles++;
+            });
+            sinResultados.hidden = visibles > 0;
+        });
+        filtro.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+
+        var nuevo = selector.querySelector('[data-nuevo-autor]');
+        var campoNombre = nuevo.querySelector('[data-nuevo-nombre]');
+        var campoApellido = nuevo.querySelector('[data-nuevo-apellido]');
+        var mensaje = nuevo.querySelector('[data-mensaje-autor]');
+        var boton = nuevo.querySelector('[data-crear-autor]');
+        var csrf = selector.closest('form').querySelector('[name=csrfmiddlewaretoken]').value;
+
+        var crearAutor = function () {
+            var datos = new FormData();
+            datos.append('nombre', campoNombre.value.trim());
+            datos.append('apellido', campoApellido.value.trim());
+            datos.append('biografia', '');
+            boton.disabled = true;
+            mensaje.className = 'selector-autores__mensaje';
+            mensaje.textContent = 'Guardando…';
+            fetch(nuevo.getAttribute('data-url'), {
+                method: 'POST', body: datos, credentials: 'same-origin',
+                headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, datos: j }; }); })
+              .then(function (res) {
+                if (!res.ok) {
+                    var errores = res.datos.errores || {};
+                    mensaje.classList.add('es-error');
+                    mensaje.textContent = 'Revisa los datos: ' + Object.keys(errores).map(function (c) { return c + ' (' + errores[c].join(' ') + ')'; }).join('; ');
+                    return;
+                }
+                var a = res.datos;
+                var casilla = lista.querySelector('input[value="' + a.id + '"]');
+                if (!casilla) {
+                    var opcion = document.createElement('label');
+                    opcion.className = 'selector-autores__opcion es-nuevo';
+                    casilla = document.createElement('input');
+                    casilla.type = 'checkbox'; casilla.name = 'autores'; casilla.value = a.id;
+                    casilla.className = 'form-check-input'; casilla.id = 'id_autores_nuevo_' + a.id;
+                    opcion.setAttribute('for', casilla.id);
+                    var texto = document.createElement('span'); texto.textContent = a.texto;
+                    opcion.appendChild(casilla); opcion.appendChild(texto);
+                    lista.prepend(opcion);
+                }
+                casilla.checked = true;
+                pintarElegidos();
+                mensaje.textContent = a.existente ? '«' + a.texto + '» ya existía: quedó seleccionado.' : '«' + a.texto + '» se agregó y quedó seleccionado.';
+                campoNombre.value = ''; campoApellido.value = '';
+            }).catch(function () {
+                mensaje.classList.add('es-error');
+                mensaje.textContent = 'No se pudo guardar el autor. Revisa tu conexión e inténtalo de nuevo.';
+            }).finally(function () { boton.disabled = false; });
+        };
+        boton.addEventListener('click', crearAutor);
+        [campoNombre, campoApellido].forEach(function (c) {
+            c.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); crearAutor(); } });
+        });
+    }
+
+    // Avisar antes de salir de un formulario con cambios sin guardar.
+    // Compara el contenido actual con el que tenía al abrirse; si el formulario volvió con errores,
+    // lo escrito aún no está guardado, así que también avisa.
+    document.querySelectorAll('form[data-avisar-cambios]').forEach(function (form) {
+        var huella = function () {
+            var partes = [];
+            new FormData(form).forEach(function (valor, nombre) {
+                if (nombre === 'csrfmiddlewaretoken') return;
+                partes.push(nombre + '=' + (typeof valor === 'string' ? valor : valor.name + ':' + valor.size));
+            });
+            return partes.join('&');
+        };
+        var inicial = form.querySelector('.invalid-feedback, .aviso--error') ? null : huella();
+        var enviando = false;
+        form.addEventListener('submit', function () { enviando = true; });
+        window.addEventListener('beforeunload', function (e) {
+            if (enviando || huella() === inicial) return;
+            e.preventDefault();
+            e.returnValue = '';  // el navegador muestra su propio mensaje de confirmación
+        });
+    });
 })();

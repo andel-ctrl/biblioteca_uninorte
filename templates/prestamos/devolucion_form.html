@@ -1,83 +1,37 @@
-{% extends 'base.html' %}
-{% block title %}Registrar Devolución — Biblioteca{% endblock %}
-{% block content %}
+{% extends 'componentes/base_formulario.html' %}
+{% load biblioteca_ui %}
+{% block title %}Registrar devolución — Biblioteca{% endblock %}
+{% block ref %}Préstamo {{ prestamo.pk|stringformat:"04d" }} · ejemplar {{ prestamo.ejemplar.codigo_barras }}{% endblock %}
+{% block titulo %}Registrar <em>devolución</em>{% endblock %}
+{% block bajada %}«{{ prestamo.ejemplar.libro.titulo }}», prestado a {{ prestamo.usuario.get_nombre_completo }}.{% endblock %}
 
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb small">
-        <li class="breadcrumb-item"><a href="{% url 'prestamos:prestamo_list' %}" class="text-decoration-none text-muted">Préstamos</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'prestamos:prestamo_detail' prestamo.pk %}" class="text-decoration-none text-muted">Préstamo #{{ prestamo.pk }}</a></li>
-        <li class="breadcrumb-item active font-serif">Registrar Devolución</li>
-    </ol>
-</nav>
-
-<div class="row justify-content-center mb-5">
-    <div class="col-md-8 col-lg-7">
-        <div class="card p-4 shadow-md border-0" style="border: 1px solid var(--color-border) !important;">
-            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom" style="border-color: var(--color-border-subtle) !important;">
-                <div class="kpi-icon-wrap kpi-icon-forest" style="width: 52px; height: 52px;">
-                    <i class="bi bi-arrow-return-left fs-3"></i>
-                </div>
-                <div>
-                    <h3 class="font-serif fw-bold mb-1">Recepción & Devolución de Ejemplar</h3>
-                    <p class="text-muted small mb-0">Al confirmar, el ejemplar cambiará automáticamente a estado <strong>Disponible</strong> en el catálogo. Si la observación es <strong>Dañado</strong> o <strong>Páginas faltantes</strong>, quedará <strong>En mantenimiento</strong> hasta que sea revisado.</p>
-                </div>
-            </div>
-
-            <!-- FICHA RESUMEN DEL PRÉSTAMO -->
-            <div class="card p-3 mb-4 border-0" style="background: var(--color-surface-soft); border-radius: var(--radius-sm);">
-                <div class="row g-2 small">
-                    <div class="col-sm-6">
-                        <span class="text-muted d-block">Lector:</span>
-                        <strong>{{ prestamo.usuario.get_nombre_completo }}</strong>
-                    </div>
-                    <div class="col-sm-6">
-                        <span class="text-muted d-block">Ejemplar:</span>
-                        <code>{{ prestamo.ejemplar.codigo_barras }}</code> &mdash; {{ prestamo.ejemplar.libro.titulo|truncatechars:30 }}
-                    </div>
-                    <div class="col-sm-6">
-                        <span class="text-muted d-block">Fecha de Vencimiento:</span>
-                        <span>{{ prestamo.fecha_vencimiento|date:"d M Y"|default:"—" }}</span>
-                    </div>
-                    <div class="col-sm-6">
-                        <span class="text-muted d-block">Cálculo de Sanción / Mora:</span>
-                        {% if multa_estimada > 0 %}
-                        <span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle"></i> ${{ multa_estimada }} de multa acumulada</span>
-                        {% else %}
-                        <span class="text-success fw-semibold"><i class="bi bi-check2"></i> Sin mora (Entrega a tiempo)</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- FORMULARIO DE DEVOLUCIÓN -->
-            <form method="post">
-                {% csrf_token %}
-                {% for field in form %}
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold text-muted text-uppercase tracking-wider">
-                        {{ field.label }}
-                    </label>
-                    {{ field }}
-                    {% if field.help_text %}
-                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                    {% endif %}
-                    {% if field.errors %}
-                    <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-
-                <div class="d-flex gap-2 pt-3 border-top mt-4" style="border-color: var(--color-border-subtle) !important;">
-                    <button type="submit" class="btn btn-forest px-4 py-2">
-                        <i class="bi bi-check2 me-1"></i> Confirmar Devolución & Liberar Ejemplar
-                    </button>
-                    <a href="{% url 'prestamos:prestamo_detail' prestamo.pk %}" class="btn btn-outline-forest py-2">
-                        Cancelar
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
+{% block notas %}
+<h2>El préstamo</h2>
+<dl class="libro-mayor__lista">
+    <div><dt>Lector</dt><dd>{{ prestamo.usuario.get_nombre_completo }}</dd></div>
+    <div><dt>Prestado</dt><dd class="cifra">{{ prestamo.fecha_prestamo|date:"d/m/Y" }}</dd></div>
+    <div><dt>Vencimiento</dt><dd class="cifra {% if prestamo.estado == 'vencido' %}text-danger{% endif %}">{{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</dd></div>
+    <div><dt>Estado</dt><dd>{% estado prestamo.estado 'prestamo' %}</dd></div>
+</dl>
+<div class="multa-estimada {% if multa_estimada > 0 %}multa-estimada--mora{% endif %}">
+    <span>Multa si se devuelve hoy</span>
+    <strong class="cifra">{% if multa_estimada > 0 %}{{ multa_estimada|pesos }}{% else %}{{ 0|pesos }}{% endif %}</strong>
+    <small>{% if multa_estimada > 0 %}{{ prestamo.dias_retraso }} día{{ prestamo.dias_retraso|pluralize }} de retraso × tarifa vigente{% else %}Entrega a tiempo{% endif %}</small>
 </div>
-
+<h2>Qué pasa con el ejemplar</h2>
+<ul>
+    <li>Sin observaciones o en buen estado: queda <strong>disponible</strong>.</li>
+    <li>Dañado o con páginas faltantes: queda <strong>en mantenimiento</strong> hasta revisarlo.</li>
+</ul>
+<p>La multa se calcula con la fecha de devolución que registres.</p>
 {% endblock %}
+
+{% block campos %}
+{% include 'componentes/_campo.html' with field=form.fecha_devolucion %}
+{% include 'componentes/_campo.html' with field=form.observacion %}
+{% include 'componentes/_campo.html' with field=form.detalle_observacion %}
+{% include 'componentes/_campo.html' with field=form.multa_pagada %}
+{% endblock %}
+
+{% block boton %}Confirmar devolución{% endblock %}
+{% block cancelar_url %}{% url 'prestamos:prestamo_detail' prestamo.pk %}{% endblock %}

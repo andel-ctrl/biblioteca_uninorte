@@ -3,6 +3,7 @@ from django.utils import timezone
 from apps.usuarios.models import UsuarioBiblioteca
 from apps.catalogos.models import Ejemplar
 import datetime
+from apps.catalogos.formato import formato_pesos
 
 
 class ConfiguracionMulta(models.Model):
@@ -13,9 +14,13 @@ class ConfiguracionMulta(models.Model):
     class Meta:
         verbose_name = 'Configuración de Multa'
         verbose_name_plural = 'Configuraciones de Multa'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(tarifa_por_dia__gt=0), name='tarifa_multa_positiva',
+                violation_error_message='La tarifa debe ser mayor que cero.'),
+        ]
 
     def __str__(self):
-        return f"${self.tarifa_por_dia}/día desde {self.vigencia_desde}"
+        return f"{formato_pesos(self.tarifa_por_dia)}/día desde {self.vigencia_desde}"
 
     @classmethod
     def tarifa_vigente(cls):
@@ -56,6 +61,24 @@ class Prestamo(models.Model):
         verbose_name = 'Préstamo'
         verbose_name_plural = 'Préstamos'
         ordering = ['-fecha_solicitud']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(estado__in=['pendiente', 'activo', 'vencido', 'devuelto', 'rechazado', 'perdido']),
+                name='prestamo_estado_valido',
+                violation_error_message='El estado del préstamo no es válido.'),
+            # El vencimiento nunca es anterior al día del préstamo
+            models.CheckConstraint(
+                condition=models.Q(fecha_prestamo__isnull=True) | models.Q(fecha_vencimiento__isnull=True)
+                | models.Q(fecha_vencimiento__gte=models.F('fecha_prestamo')),
+                name='prestamo_vencimiento_posterior',
+                violation_error_message='La fecha de vencimiento no puede ser anterior a la fecha del préstamo.'),
+            # Un préstamo aprobado (no pendiente ni rechazado) tiene sus dos fechas
+            models.CheckConstraint(
+                condition=models.Q(estado__in=['pendiente', 'rechazado'])
+                | models.Q(fecha_prestamo__isnull=False, fecha_vencimiento__isnull=False),
+                name='prestamo_aprobado_con_fechas',
+                violation_error_message='Un préstamo aprobado necesita fecha de préstamo y de vencimiento.'),
+        ]
 
     def __str__(self):
         return f"Préstamo #{self.pk} — {self.usuario} — {self.ejemplar.libro.titulo}"
@@ -84,7 +107,12 @@ class Prestamo(models.Model):
     def aprobar(self, bibliotecario, fecha_vencimiento=None):
         # Aprueba el préstamo, cambia estado del ejemplar y pone lo de las fechas.
         # atomic: o se guardan préstamo y ejemplar juntos, o ninguno
+        # Devuelve cuántas otras solicitudes del mismo ejemplar se rechazaron automáticamente.
         with transaction.atomic():
+            # Bloquea la fila del ejemplar: dos aprobaciones simultáneas no pueden prestarlo dos veces
+            ejemplar = Ejemplar.objects.select_for_update().get(pk=self.ejemplar_id)
+            if not ejemplar.esta_disponible():
+                raise ValueError('El ejemplar ya no está disponible.')
             self.estado = 'activo'
             self.aprobado_por = bibliotecario
             self.fecha_prestamo = timezone.localdate()
@@ -92,8 +120,32 @@ class Prestamo(models.Model):
                 self.fecha_prestamo + datetime.timedelta(days=self.DIAS_PRESTAMO_DEFECTO)
             )
             self.save()
-            self.ejemplar.estado = 'prestado'
-            self.ejemplar.save()
+            ejemplar.estado = 'prestado'
+            ejemplar.save()
+            self.ejemplar = ejemplar
+            # Las demás solicitudes de ese ejemplar ya no pueden atenderse: se cierran en vez de quedar pendientes
+            return Prestamo.objects.filter(ejemplar=ejemplar, estado='pendiente').exclude(pk=self.pk).update(
+                estado='rechazado', aprobado_por=bibliotecario,
+                observaciones='Rechazada automáticamente: el ejemplar se prestó a otra solicitud.',
+            )
+
+    def puede_ampliarse(self):
+        # Solo un préstamo activo y que aún no llegó al máximo de días desde que se prestó.
+        # Uno vencido no se amplía: borraría la mora ya acumulada.
+        return (self.estado == 'activo' and self.fecha_prestamo and self.fecha_vencimiento
+                and self.fecha_vencimiento < self.fecha_limite_ampliacion())
+
+    def fecha_limite_ampliacion(self):
+        return self.fecha_prestamo + datetime.timedelta(days=self.DIAS_PRESTAMO_MAXIMO)
+
+    def ampliar_plazo(self, nueva_fecha, bibliotecario):
+        # Mueve la fecha de vencimiento y deja constancia en las observaciones del préstamo
+        anterior = self.fecha_vencimiento
+        self.fecha_vencimiento = nueva_fecha
+        quien = bibliotecario.get_nombre_completo() if bibliotecario else 'el personal'
+        nota = f'Plazo ampliado del {anterior:%d/%m/%Y} al {nueva_fecha:%d/%m/%Y} por {quien} el {timezone.localdate():%d/%m/%Y}.'
+        self.observaciones = f'{self.observaciones}\n{nota}'.strip()
+        self.save(update_fields=['fecha_vencimiento', 'observaciones'])
 
     def reportar_perdida(self, bibliotecario):
         # Se registra como una devolución con observación 'perdido': así queda la fecha,
@@ -138,6 +190,10 @@ class Devolucion(models.Model):
     class Meta:
         verbose_name = 'Devolución'
         verbose_name_plural = 'Devoluciones'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(monto_multa__gte=0), name='devolucion_multa_no_negativa',
+                violation_error_message='La multa no puede ser negativa.'),
+        ]
 
     def __str__(self):
         return f"Devolución del Préstamo #{self.prestamo.pk} — {self.fecha_devolucion}"

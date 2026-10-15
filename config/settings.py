@@ -21,6 +21,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Búsquedas de PostgreSQL (lookup __unaccent: buscar sin importar tildes)
+    'django.contrib.postgres',
     # Apps propias
     'apps.catalogos',
     'apps.usuarios',
@@ -81,6 +83,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'es-co'
+# Traducciones propias (locale/): mensajes de validación de Django en tuteo, como el resto del sitio
+LOCALE_PATHS = [BASE_DIR / 'locale']
 TIME_ZONE = 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
@@ -88,7 +92,14 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Django 4.2+ usa STORAGES (STATICFILES_STORAGE ya no existe en Django 5.1+).
+# En producción (DEBUG=False) WhiteNoise sirve los estáticos comprimidos y con nombre versionado;
+# requiere ejecutar antes: python manage.py collectstatic
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG
+                    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

@@ -1,105 +1,48 @@
 {% extends 'base.html' %}
-{% block title %}Préstamos Activos & Vencidos — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Préstamos activos y vencidos — Biblioteca{% endblock %}
 {% block content %}
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Control de Circulación</span>
-        <h1 class="display-6 fw-bold mb-1">Préstamos en Curso</h1>
-        <p class="text-muted mb-0">Seguimiento de obras en poder de los lectores y control de vencimientos.</p>
+        <p class="encabezado__ref">Circulación en curso</p>
+        <h1 class="encabezado__titulo">Activos y <em>vencidos</em></h1>
+        <p class="encabezado__bajada">Libros que están fuera de la biblioteca, ordenados por fecha de vencimiento: primero los más atrasados.</p>
     </div>
-    <div>
-        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-forest btn-sm">
-            <i class="bi bi-arrow-left-right me-1"></i> Todos los Préstamos
-        </a>
-    </div>
-</div>
+</header>
+{% include 'componentes/_colofon.html' with n=prestamos|length etiqueta='préstamos en curso' singular='préstamo en curso' %}
 
-<div class="card shadow-sm mb-5">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-0 font-serif">Listado de Préstamos Activos</h5>
-            <small class="text-muted">Ordenados por proximidad de fecha límite de entrega.</small>
-        </div>
-        <span class="badge-status badge-disponible">
-            {{ prestamos.count }} en circulación
-        </span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Lector / Usuario</th>
-                    <th>Obra & Ejemplar</th>
-                    <th>Fecha Préstamo</th>
-                    <th>Vencimiento</th>
-                    <th>Estado</th>
-                    <th>Multa Estimada</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in prestamos %}
-                <tr class="{% if p.estado == 'vencido' %}table-danger-subtle{% endif %}">
-                    <td class="text-muted small">#{{ p.id }}</td>
-                    <td>
-                        <div class="fw-semibold">{{ p.usuario.get_nombre_completo }}</div>
-                        <small class="text-muted font-monospace">{{ p.usuario.codigo_universitario }}</small>
-                    </td>
-                    <td>
-                        <div class="font-serif fw-semibold">{{ p.ejemplar.libro.titulo|truncatechars:38 }}</div>
-                        <small class="text-muted font-monospace"><code>{{ p.ejemplar.codigo_barras }}</code> &mdash; {{ p.ejemplar.ubicacion }}</small>
-                    </td>
-                    <td class="text-muted small">{{ p.fecha_prestamo|date:"d M Y"|default:"—" }}</td>
-                    <td class="small">
-                        {% if p.fecha_vencimiento %}
-                        <span class="{% if p.estado == 'vencido' %}text-danger fw-bold{% else %}fw-semibold text-dark{% endif %}">
-                            {{ p.fecha_vencimiento|date:"d M Y" }}
-                        </span>
-                        {% else %}&mdash;{% endif %}
-                    </td>
-                    <td>
-                        {% if p.estado == 'vencido' %}
-                        <span class="badge-status badge-vencido">
-                            <i class="bi bi-exclamation-triangle"></i> Vencido
-                        </span>
-                        {% else %}
-                        <span class="badge-status badge-disponible">
-                            <i class="bi bi-clock"></i> Activo
-                        </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if p.multa_estimada > 0 %}
-                        <span class="text-danger fw-bold">${{ p.multa_estimada }}</span>
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">({{ p.dias_retraso }} días de mora)</small>
-                        {% else %}
-                        <span class="text-muted small">Al día</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="btn btn-forest" title="Registrar devolución">
-                                <i class="bi bi-arrow-return-left me-1"></i> Devolver
-                            </a>
-                            <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="btn btn-outline-secondary" title="Ver detalle">
-                                Ver
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
-                        <i class="bi bi-check2-circle fs-1 d-block mb-2 text-success opacity-50"></i>
-                        No hay préstamos activos ni vencidos en este momento. Todos los ejemplares están en sala.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+{% if prestamos %}
+<div class="tabla-desplazable"><table class="table tabla tabla--apilada tabla--ancha table-hover">
+    <thead>
+        <tr><th scope="col">N.º</th><th scope="col">Lector</th><th scope="col">Obra y ejemplar</th><th scope="col">Prestado</th><th scope="col">Vence</th><th scope="col">Estado</th><th scope="col" class="text-end">Acciones</th></tr>
+    </thead>
+    <tbody>
+        {% for p in prestamos %}
+        <tr {% if p.estado == 'vencido' %}class="fila-alerta"{% endif %}>
+            <td data-label="N.º" class="cifra">{{ p.id|stringformat:"04d" }}</td>
+            <td data-label="Lector"><div>{{ p.usuario.get_nombre_completo }}<span class="tabla__meta mono">{{ p.usuario.codigo_universitario }}</span></div></td>
+            <td data-label="Obra" class="col-ancha"><div><span class="tabla__titulo">{{ p.ejemplar.libro.titulo|truncatechars:48 }}</span><span class="tabla__meta"><span class="mono">{{ p.ejemplar.codigo_barras }}</span> · {{ p.ejemplar.ubicacion }}</span></div></td>
+            <td data-label="Prestado" class="cifra">{{ p.fecha_prestamo|date:"d/m/Y"|default:"—" }}</td>
+            <td data-label="Vence" class="cifra {% if p.estado == 'vencido' %}text-danger fw-semibold{% endif %}">{{ p.fecha_vencimiento|date:"d/m/Y" }}</td>
+            <td data-label="Estado">
+                <div>{% estado p.estado 'prestamo' %}
+                {% if p.estado == 'vencido' %}<span class="tabla__meta text-danger fw-semibold">{{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} · mora {{ p.multa_estimada|pesos }}</span>{% endif %}</div>
+            </td>
+            <td data-label="">
+                <div class="acciones">
+                    <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="accion {% if p.estado == 'vencido' %}accion--principal{% endif %}"><i class="bi bi-arrow-return-left" aria-hidden="true"></i> Devolver</a>
+                    <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="accion">Ver</a>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table></div>
+{% else %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>No hay préstamos en curso</h2>
+    <p>Todos los ejemplares están en la biblioteca.</p>
 </div>
-
+{% endif %}
 {% endblock %}

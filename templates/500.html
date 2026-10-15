@@ -1,0 +1,30 @@
+{% load static %}<!DOCTYPE html>
+{% comment %} Página autónoma: Django la muestra sin contexto (sin usuario ni procesadores), así que no extiende base.html {% endcomment %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error del servidor — Biblioteca</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-uni.svg' %}">
+    <link href="{% static 'vendor/bootstrap-5.3.3/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/fuentes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    <link rel="stylesheet" href="{% static 'css/componentes.css' %}">
+</head>
+<body class="cuerpo-lector">
+<main class="pagina" id="contenido">
+    <div class="container">
+        <div class="vacio vacio--error">
+            {% include 'componentes/_ilustracion_estante.html' %}
+            <p class="vacio__codigo">Error 500</p>
+            <h1>Algo se <em>traspapeló</em></h1>
+            <p>El servidor tuvo un problema al preparar esta página. Intenta de nuevo en unos minutos; si persiste, avisa al personal de la biblioteca.</p>
+            <a class="btn btn-primary mt-2" href="/">Volver al inicio <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+        </div>
+    </div>
+</main>
+</body>
+</html>

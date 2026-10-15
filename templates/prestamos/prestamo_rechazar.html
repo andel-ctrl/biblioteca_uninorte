@@ -1,23 +1,18 @@
-{% extends 'base.html' %}
-{% block title %}Rechazar Préstamo{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white"><i class="bi bi-x-circle me-2"></i>Rechazar Préstamo #{{ prestamo.pk }}</div>
-            <div class="card-body">
-                <div class="alert alert-light border">
-                    <strong>Usuario:</strong> {{ prestamo.usuario.get_nombre_completo }}<br>
-                    <strong>Libro:</strong> {{ prestamo.ejemplar.libro.titulo }}<br>
-                    <strong>Solicitud:</strong> {{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}
-                </div>
-                <form method="post" class="d-flex gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg me-1"></i>Rechazar</button>
-                    <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% block title %}Rechazar solicitud — Biblioteca{% endblock %}
+{% block tono %}peligro{% endblock %}
+{% block ref %}Solicitud {{ prestamo.pk|stringformat:"04d" }}{% endblock %}
+{% block titulo %}¿Rechazar esta <em>solicitud</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ prestamo.ejemplar.libro.titulo }}</dd></div>
+<div><dt>Ejemplar</dt><dd class="mono">{{ prestamo.ejemplar.codigo_barras }}</dd></div>
+<div><dt>Lector</dt><dd>{{ prestamo.usuario.get_nombre_completo }} <span class="mono">({{ prestamo.usuario.codigo_universitario }})</span></dd></div>
+<div><dt>Solicitado</dt><dd class="cifra">{{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>La solicitud queda como <strong>rechazada</strong> y el lector la verá así en su historial.</li>
+<li>El ejemplar sigue disponible para otros lectores.</li>
+{% endblock %}
+{% block boton_clase %}btn-danger{% endblock %}
+{% block boton %}Sí, rechazar la solicitud{% endblock %}
+{% block cancelar_url %}{% url 'prestamos:prestamo_list' %}{% endblock %}

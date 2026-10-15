@@ -1,0 +1,128 @@
+# Mensajes de validación de Django reescritos en tuteo, para que coincidan con el resto del sitio.
+# Django usa "usted" en su traducción al español; estas entradas tienen prioridad (LOCALE_PATHS).
+# Después de editar este archivo: python manage.py compilemessages -l es
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: es\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+# --- Campos de formulario y validadores ---
+msgid "Enter a valid value."
+msgstr "Escribe un valor válido."
+
+msgid "Enter a valid email address."
+msgstr "Escribe un correo electrónico válido."
+
+msgid "Enter a valid URL."
+msgstr "Escribe una URL válida."
+
+msgid "Enter a valid integer."
+msgstr "Escribe un número entero válido."
+
+msgid "Enter a whole number."
+msgstr "Escribe un número entero."
+
+msgid "Enter a number."
+msgstr "Escribe un número."
+
+msgid "Enter a valid date."
+msgstr "Escribe una fecha válida."
+
+msgid "Enter a valid time."
+msgstr "Escribe una hora válida."
+
+msgid "Enter a valid date/time."
+msgstr "Escribe una fecha y hora válidas."
+
+msgid "Enter a valid duration."
+msgstr "Escribe una duración válida."
+
+msgid "Enter a list of values."
+msgstr "Escribe una lista de valores."
+
+msgid "Enter a complete value."
+msgstr "Escribe un valor completo."
+
+#, python-format
+msgid "Ensure this value is less than or equal to %(limit_value)s."
+msgstr "El valor debe ser menor o igual a %(limit_value)s."
+
+#, python-format
+msgid "Ensure this value is greater than or equal to %(limit_value)s."
+msgstr "El valor debe ser mayor o igual a %(limit_value)s."
+
+#, python-format
+msgid "Ensure this value is %(limit_value)s (it is %(show_value)s)."
+msgstr "El valor debe ser %(limit_value)s (ahora es %(show_value)s)."
+
+#, python-format
+msgid "Ensure this value is a multiple of step size %(limit_value)s."
+msgstr "El valor debe ser múltiplo de %(limit_value)s."
+
+#, python-format
+msgid "Ensure this value has at least %(limit_value)d character (it has %(show_value)d)."
+msgid_plural "Ensure this value has at least %(limit_value)d characters (it has %(show_value)d)."
+msgstr[0] "Escribe al menos %(limit_value)d carácter (tiene %(show_value)d)."
+msgstr[1] "Escribe al menos %(limit_value)d caracteres (tiene %(show_value)d)."
+msgstr[2] "Escribe al menos %(limit_value)d caracteres (tiene %(show_value)d)."
+
+#, python-format
+msgid "Ensure this value has at most %(limit_value)d character (it has %(show_value)d)."
+msgid_plural "Ensure this value has at most %(limit_value)d characters (it has %(show_value)d)."
+msgstr[0] "Escribe como máximo %(limit_value)d carácter (tiene %(show_value)d)."
+msgstr[1] "Escribe como máximo %(limit_value)d caracteres (tiene %(show_value)d)."
+msgstr[2] "Escribe como máximo %(limit_value)d caracteres (tiene %(show_value)d)."
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s digit in total."
+msgid_plural "Ensure that there are no more than %(max)s digits in total."
+msgstr[0] "Usa como máximo %(max)s dígito en total."
+msgstr[1] "Usa como máximo %(max)s dígitos en total."
+msgstr[2] "Usa como máximo %(max)s dígitos en total."
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s decimal place."
+msgid_plural "Ensure that there are no more than %(max)s decimal places."
+msgstr[0] "Usa como máximo %(max)s decimal."
+msgstr[1] "Usa como máximo %(max)s decimales."
+msgstr[2] "Usa como máximo %(max)s decimales."
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s digit before the decimal point."
+msgid_plural "Ensure that there are no more than %(max)s digits before the decimal point."
+msgstr[0] "Usa como máximo %(max)s dígito antes de la coma decimal."
+msgstr[1] "Usa como máximo %(max)s dígitos antes de la coma decimal."
+msgstr[2] "Usa como máximo %(max)s dígitos antes de la coma decimal."
+
+# --- Archivos e imágenes (portada del libro) ---
+msgid "No file was submitted. Check the encoding type on the form."
+msgstr "No se envió ningún archivo. Revisa el tipo de codificación del formulario."
+
+#, python-format
+msgid "Ensure this filename has at most %(max)d character (it has %(length)d)."
+msgid_plural "Ensure this filename has at most %(max)d characters (it has %(length)d)."
+msgstr[0] "El nombre del archivo debe tener como máximo %(max)d carácter (tiene %(length)d)."
+msgstr[1] "El nombre del archivo debe tener como máximo %(max)d caracteres (tiene %(length)d)."
+msgstr[2] "El nombre del archivo debe tener como máximo %(max)d caracteres (tiene %(length)d)."
+
+msgid "Please either submit a file or check the clear checkbox, not both."
+msgstr "Sube un archivo o marca la casilla para quitarlo, pero no ambas cosas."
+
+msgid "Upload a valid image. The file you uploaded was either not an image or a corrupted image."
+msgstr "Sube una imagen válida. El archivo que enviaste no es una imagen o está dañado."
+
+# --- Cuentas y contraseñas ---
+#, python-format
+msgid "Please enter a correct %(username)s and password. Note that both fields may be case-sensitive."
+msgstr "Escribe un %(username)s y una contraseña correctos. Ten en cuenta que se distinguen mayúsculas y minúsculas."
+
+msgid "Your password can’t be too similar to your other personal information."
+msgstr "Tu contraseña no puede parecerse demasiado a tus otros datos personales."
+
+msgid "Enter a valid username. This value may contain only unaccented lowercase a-z and uppercase A-Z letters, numbers, and @/./+/-/_ characters."
+msgstr "Escribe un nombre de usuario válido: solo letras sin tilde (a-z, A-Z), números y los caracteres @/./+/-/_."
+
+msgid "Enter a valid username. This value may contain only letters, numbers, and @/./+/-/_ characters."
+msgstr "Escribe un nombre de usuario válido: solo letras, números y los caracteres @/./+/-/_."

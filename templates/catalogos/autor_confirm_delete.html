@@ -1,0 +1,16 @@
+{% extends 'componentes/base_confirmacion.html' %}
+{% block title %}Eliminar autor — Biblioteca{% endblock %}
+{% block tono %}peligro{% endblock %}
+{% block ref %}Eliminación de un registro{% endblock %}
+{% block titulo %}¿Eliminar este <em>autor</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Autor</dt><dd class="confirmacion__obra">{{ autor }}</dd></div>
+<div><dt>Libros</dt><dd>Ninguno asociado</dd></div>
+{% endblock %}
+{% block consecuencias %}
+<li>Se elimina el registro del autor. No se puede deshacer.</li>
+<li>No afecta ningún libro: este autor no tiene libros asociados.</li>
+{% endblock %}
+{% block boton_clase %}btn-danger{% endblock %}
+{% block boton %}Sí, eliminar el autor{% endblock %}
+{% block cancelar_url %}{% url 'catalogos:autor_list' %}{% endblock %}

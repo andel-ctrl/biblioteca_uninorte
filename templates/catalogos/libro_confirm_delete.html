@@ -1,20 +1,17 @@
-{% extends 'base.html' %}
-{% block title %}Eliminar Libro{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white"><i class="bi bi-trash me-2"></i>Eliminar Libro</div>
-            <div class="card-body">
-                <p>¿Estás seguro de que deseas eliminar <strong>{{ libro.titulo }}</strong>?</p>
-                <p class="text-muted small">Esta acción no se puede deshacer. Se eliminarán también todos sus ejemplares.</p>
-                <form method="post" class="d-flex gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Sí, eliminar</button>
-                    <a href="{% url 'catalogos:libro_detail' libro.pk %}" class="btn btn-outline-secondary">Cancelar</a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% block title %}Eliminar libro — Biblioteca{% endblock %}
+{% block tono %}peligro{% endblock %}
+{% block ref %}Eliminación de un registro{% endblock %}
+{% block titulo %}¿Eliminar este <em>libro</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Título</dt><dd class="confirmacion__obra">{{ libro.titulo }}</dd></div>
+<div><dt>ISBN</dt><dd class="mono">{{ libro.isbn }}</dd></div>
+<div><dt>Ejemplares</dt><dd>{{ libro.total_ejemplares }}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>Se eliminan el libro y <strong>todos sus ejemplares</strong>. No se puede deshacer.</li>
+<li>Si algún ejemplar tiene préstamos registrados, el sistema <strong>no permitirá</strong> eliminarlo para proteger el historial.</li>
+{% endblock %}
+{% block boton_clase %}btn-danger{% endblock %}
+{% block boton %}Sí, eliminar el libro{% endblock %}
+{% block cancelar_url %}{% url 'catalogos:libro_detail' libro.pk %}{% endblock %}

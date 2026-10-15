@@ -7,8 +7,8 @@
     <script>document.documentElement.classList.add('js');</script>
     <!-- Todo se sirve desde el proyecto (static/vendor): la app no depende de internet -->
     <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-uni.svg' %}">
-    <link rel="preload" href="{% static 'vendor/fonts/instrument-sans-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="{% static 'vendor/fonts/fraunces-latin-opsz-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'vendor/fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'vendor/fonts/dm-serif-display-latin-400-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link href="{% static 'vendor/bootstrap-5.3.3/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/fuentes.css' %}">
@@ -17,7 +17,6 @@
     <link rel="stylesheet" href="{% static 'css/layout.css' %}">
     <link rel="stylesheet" href="{% static 'css/componentes.css' %}">
     <link rel="stylesheet" href="{% static 'css/pantallas.css' %}">
-    <link rel="stylesheet" href="{% static 'css/legado.css' %}">
 </head>
 {% with ns=request.resolver_match.namespace vista=request.resolver_match.url_name %}
 <body class="{% if es_bibliotecario %}cuerpo-bib{% else %}cuerpo-lector{% endif %} {% block cuerpo_clase %}{% endblock %}">
@@ -26,7 +25,7 @@
 {% if es_bibliotecario %}
 <!-- ===================== BIBLIOTECARIO: barra lateral ===================== -->
 <header class="barra-movil">
-    <a class="marca" href="{% url 'home' %}"><span class="marca__placa">{% include 'componentes/_logo.html' %}</span><span class="marca__nombre">Biblioteca</span></a>
+    <a class="marca" href="{% url 'home' %}">{% include 'componentes/_logo.html' %}<span class="marca__nombre">Biblioteca</span></a>
     <button class="boton-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#lateral" aria-controls="lateral">
         <i class="bi bi-list" aria-hidden="true"></i> Menú
     </button>
@@ -36,7 +35,7 @@
     <div class="lateral__interior">
         <div class="lateral__marca d-flex align-items-start justify-content-between">
             <a class="marca" href="{% url 'home' %}">
-                <span class="marca__placa">{% include 'componentes/_logo.html' %}</span>
+                {% include 'componentes/_logo.html' %}
                 <span class="marca__texto"><span class="marca__nombre">Biblioteca</span><span class="marca__sub">Préstamos · Uninorte</span></span>
             </a>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#lateral" aria-label="Cerrar menú"></button>
@@ -53,9 +52,9 @@
             </div>
             <div class="lateral__grupo">
                 <div class="lateral__titulo">Catálogo</div>
-                <a class="lateral__enlace" href="{% url 'catalogos:libro_list' %}" {% if ns == 'catalogos' and vista != 'autor_list' and vista != 'autor_create' %}aria-current="page"{% endif %}>
+                <a class="lateral__enlace" href="{% url 'catalogos:libro_list' %}" {% if ns == 'catalogos' and 'autor' not in vista %}aria-current="page"{% endif %}>
                     <i class="bi bi-book" aria-hidden="true"></i> Libros y ejemplares</a>
-                <a class="lateral__enlace" href="{% url 'catalogos:autor_list' %}" {% if vista == 'autor_list' or vista == 'autor_create' %}aria-current="page"{% endif %}>
+                <a class="lateral__enlace" href="{% url 'catalogos:autor_list' %}" {% if ns == 'catalogos' and 'autor' in vista %}aria-current="page"{% endif %}>
                     <i class="bi bi-person-lines-fill" aria-hidden="true"></i> Autores</a>
             </div>
             <div class="lateral__grupo">
@@ -91,7 +90,7 @@
             <a class="lateral__enlace mb-2" href="{% url 'usuarios:mi_historial' %}" {% if vista == 'mi_historial' %}aria-current="page"{% endif %}>
                 <i class="bi bi-bookmark" aria-hidden="true"></i> Mis préstamos</a>
             {% endif %}
-            <a class="boton-salir" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión</a>
+            <form method="post" action="{% url 'logout' %}" class="form-salir">{% csrf_token %}<button type="submit" class="boton-salir"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión</button></form>
         </div>
     </div>
 </aside>
@@ -121,14 +120,14 @@
                 {% endif %}
             </nav>
             <div class="barra__cuenta">
-                <div class="ficha-cuenta">
-                    {% include 'componentes/_iniciales.html' %}
+                <div class="ficha-cuenta" title="{{ user.get_full_name|default:user.username }} · {{ user.perfil.get_rol_display|default:'Usuario' }}">
+                    <span class="ficha-cuenta__personaje"><img src="{% static personaje %}" alt="" width="46" height="58"></span>
                     <div class="ficha-cuenta__datos">
                         <span class="ficha-cuenta__nombre">{{ user.get_full_name|default:user.username }}</span>
                         <span class="ficha-cuenta__rol">{{ user.perfil.get_rol_display|default:"Usuario" }}</span>
                     </div>
                 </div>
-                <a class="boton-salir" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir</a>
+                <form method="post" action="{% url 'logout' %}" class="form-salir">{% csrf_token %}<button type="submit" class="boton-salir"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir</button></form>
             </div>
             {% else %}
             <div class="ms-auto">

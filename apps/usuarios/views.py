@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
-from django.db.models import ProtectedError
+from django.db.models import Count, ProtectedError, Q
 from django.utils import timezone
 from .models import UsuarioBiblioteca
 from apps.prestamos.models import Prestamo
@@ -12,9 +12,31 @@ from .decorators import bibliotecario_required
 
 @bibliotecario_required
 def usuario_list(request):
-    # Lista de usuarios de la biblioteca (solo bibliotecario)
-    usuarios = UsuarioBiblioteca.objects.select_related('user').all()
-    return render(request, 'usuarios/usuario_list.html', {'usuarios': usuarios})
+    # Lista de usuarios de la biblioteca (solo bibliotecario), con búsqueda y filtros
+    query = request.GET.get('q', '').strip()
+    rol = request.GET.get('rol', '')
+    estado = request.GET.get('estado', '')
+
+    usuarios = UsuarioBiblioteca.objects.select_related('user').annotate(
+        n_activos=Count('prestamos', filter=Q(prestamos__estado__in=['activo', 'vencido'])),
+        n_vencidos=Count('prestamos', filter=Q(prestamos__estado='vencido')),
+    )
+    if query:
+        usuarios = usuarios.filter(
+            Q(user__first_name__unaccent__icontains=query) | Q(user__last_name__unaccent__icontains=query) |
+            Q(user__username__icontains=query) | Q(user__email__icontains=query) |
+            Q(codigo_universitario__icontains=query) | Q(identificacion__icontains=query)
+        )
+    if rol in dict(UsuarioBiblioteca.ROL_CHOICES):
+        usuarios = usuarios.filter(rol=rol)
+    if estado in dict(UsuarioBiblioteca.ESTADO_CHOICES):
+        usuarios = usuarios.filter(estado=estado)
+
+    return render(request, 'usuarios/usuario_list.html', {
+        'usuarios': usuarios.order_by('user__last_name', 'user__first_name'),
+        'query': query, 'rol': rol, 'estado': estado,
+        'roles': UsuarioBiblioteca.ROL_CHOICES, 'estados': UsuarioBiblioteca.ESTADO_CHOICES,
+    })
 
 
 @bibliotecario_required
@@ -34,8 +56,16 @@ def usuario_create(request):
 def usuario_detail(request, pk):
     usuario = get_object_or_404(UsuarioBiblioteca, pk=pk)
     Prestamo.actualizar_vencidos()
-    prestamos = usuario.prestamos.select_related('ejemplar__libro').order_by('-fecha_solicitud')
-    return render(request, 'usuarios/usuario_detail.html', {'usuario': usuario, 'prestamos': prestamos})
+    prestamos = list(usuario.prestamos.select_related('ejemplar__libro', 'devolucion').order_by('-fecha_solicitud'))
+    multas = [p.devolucion for p in prestamos if hasattr(p, 'devolucion') and p.devolucion.monto_multa > 0]
+    resumen = {
+        'total': sum(1 for p in prestamos if p.fecha_prestamo),
+        'en_curso': sum(1 for p in prestamos if p.estado in ('activo', 'vencido')),
+        'vencidos': sum(1 for p in prestamos if p.estado == 'vencido'),
+        'pendientes': sum(1 for p in prestamos if p.estado == 'pendiente'),
+        'multas_por_pagar': sum((d.monto_multa for d in multas if not d.multa_pagada), 0),
+    }
+    return render(request, 'usuarios/usuario_detail.html', {'usuario': usuario, 'prestamos': prestamos, 'resumen': resumen})
 
 
 @bibliotecario_required
@@ -61,7 +91,7 @@ def usuario_edit(request, pk):
 def usuario_delete(request, pk):
     usuario = get_object_or_404(UsuarioBiblioteca, pk=pk)
     if usuario.user_id == request.user.pk:
-        messages.error(request, 'No puede eliminar su propia cuenta.')
+        messages.error(request, 'No puedes eliminar tu propia cuenta.')
         return redirect('usuarios:usuario_detail', pk=pk)
     if request.method == 'POST':
         nombre = usuario.get_nombre_completo()
@@ -69,9 +99,9 @@ def usuario_delete(request, pk):
             usuario.user.delete()
         except ProtectedError:
             # PROTECT en Prestamo.usuario impide borrar usuarios con historial de préstamos
-            messages.error(request, f'No se puede eliminar a "{nombre}" porque tiene préstamos registrados. Puede cambiar su estado a bloqueado.')
+            messages.error(request, f'No se puede eliminar a «{nombre}» porque tiene préstamos registrados. Puedes cambiar su estado a bloqueado.')
             return redirect('usuarios:usuario_detail', pk=pk)
-        messages.success(request, f'Usuario "{nombre}" eliminado.')
+        messages.success(request, f'Usuario «{nombre}» eliminado.')
         return redirect('usuarios:usuario_list')
     return render(request, 'usuarios/usuario_confirm_delete.html', {'usuario': usuario})
 

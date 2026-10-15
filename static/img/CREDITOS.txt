@@ -1,8 +1,11 @@
-Fotografías (Licencia Unsplash: uso libre, comercial y no comercial, sin atribución obligatoria)
-https://unsplash.com/license
+Fotografías
+biblioteca-uninorte-fachada*.jpg   Biblioteca Karl C. Parrish Jr. (fachada). Fotografía proporcionada por el equipo del proyecto.
+biblioteca-uninorte-interior.jpg   Biblioteca Karl C. Parrish Jr. (sala de colecciones). Fotografía proporcionada por el equipo del proyecto.
 
-biblioteca-estocolmo-*  Paul Povoroznuk (@ppovoroznuk) — Biblioteca Pública de Estocolmo
-                        https://unsplash.com/photos/three-storey-library-building-with-lots-of-books-Gp7F3GkdZo8
-biblioteca-rotonda-*    Patrik Göthe (@p) — Curved library wall
-                        https://unsplash.com/photos/architectural-interior-photo-of-library-with-books-and-shelf-xiTFENI0dMY
-logo-uni.svg            Ícono del equipo, redibujado en SVG.
+Logo
+logo-uni.svg y templates/componentes/_logo.html   Ícono del equipo, vectorizado a partir del PNG original.
+
+Personajes
+personajes/docente-*.webp, personajes/estudiante-*.webp   Libros ilustrados (mascotas). Ilustración proporcionada por el equipo del proyecto;
+    recortados de la hoja original con fondo transparente. Se asigna uno al azar en cada inicio de sesión
+    (los de birrete a docentes, el resto a estudiantes). Ver apps/usuarios/personajes.py.

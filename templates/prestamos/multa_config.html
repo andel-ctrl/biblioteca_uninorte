@@ -1,59 +1,51 @@
 {% extends 'base.html' %}
-{% block title %}Tarifa de multa{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Tarifa de multa — Biblioteca{% endblock %}
 {% block content %}
-<h4 class="mb-3"><i class="bi bi-cash-coin me-2"></i>Tarifa de multa por día de retraso</h4>
-
-<div class="row g-4">
-    <div class="col-md-5">
-        <div class="card shadow-sm mb-3">
-            <div class="card-body">
-                <div class="text-muted small">Tarifa vigente</div>
-                {% if vigente %}
-                <div class="fs-3 fw-bold">${{ vigente.tarifa_por_dia }} <span class="fs-6 fw-normal text-muted">por día</span></div>
-                <div class="small text-muted">Desde el {{ vigente.vigencia_desde|date:"d/m/Y" }}</div>
-                {% else %}
-                <div class="fs-5 text-danger">No hay tarifa definida. Las devoluciones con retraso no generarán multa.</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold">Definir nueva tarifa</div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" for="{{ form.tarifa_por_dia.id_for_label }}">{{ form.tarifa_por_dia.label }}</label>
-                        {{ form.tarifa_por_dia }}
-                        {% for error in form.tarifa_por_dia.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                    </div>
-                    <p class="small text-muted">La nueva tarifa aplica a las devoluciones que se registren desde hoy. Las multas ya calculadas no cambian.</p>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar tarifa</button>
-                </form>
-            </div>
-        </div>
+<header class="encabezado">
+    <div>
+        <p class="encabezado__ref">Configuración</p>
+        <h1 class="encabezado__titulo">Tarifa de <em>multa</em></h1>
+        <p class="encabezado__bajada">Valor que se cobra por cada día de retraso al registrar una devolución o una pérdida.</p>
     </div>
+</header>
+{% include 'componentes/_colofon.html' with n=historial|length etiqueta='tarifas registradas' singular='tarifa registrada' %}
 
-    <div class="col-md-7">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-semibold">Historial de tarifas</div>
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr><th>Vigente desde</th><th class="text-end">Tarifa por día</th><th class="text-end">Estado</th></tr>
-                </thead>
-                <tbody>
-                    {% for t in historial %}
-                    <tr>
-                        <td>{{ t.vigencia_desde|date:"d/m/Y" }}</td>
-                        <td class="text-end">${{ t.tarifa_por_dia }}</td>
-                        <td class="text-end">{% if t.activa %}<span class="badge bg-success">Vigente</span>{% else %}<span class="text-muted small">Anterior</span>{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="3" class="text-center text-muted py-3">Sin registros.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="formulario">
+    <aside class="formulario__notas">
+        <h2>Tarifa vigente</h2>
+        {% if vigente %}
+        <p class="tarifa-vigente"><span class="cifra-grande">{{ vigente.tarifa_por_dia|pesos }}</span> por día</p>
+        <p>Desde el {{ vigente.vigencia_desde|date:"d/m/Y" }}.</p>
+        {% else %}
+        <p class="text-danger">No hay tarifa definida: las devoluciones con retraso no generan multa.</p>
+        {% endif %}
+        <p>Una tarifa nueva no reemplaza a la anterior: se guarda en el historial. Las multas ya registradas <strong>no cambian</strong>.</p>
+    </aside>
+
+    <div>
+        <form method="post" class="formulario__cuerpo" novalidate>
+            {% csrf_token %}
+            <div class="campos">
+                {% include 'componentes/_campo.html' with field=form.tarifa_por_dia %}
+            </div>
+            <div class="formulario__acciones">
+                <button type="submit" class="btn btn-primary">Guardar nueva tarifa <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+            </div>
+        </form>
+
+        <section class="mt-5" aria-labelledby="t-historial">
+            <h2 id="t-historial" class="grupo-prestamos__titulo">Historial de <em>tarifas</em></h2>
+            <ol class="historial">
+                {% for t in historial %}
+                <li class="historial__fila historial__fila--tarifa">
+                    <span class="historial__fecha cifra">{{ t.vigencia_desde|date:"d.m.Y" }}</span>
+                    <span class="cifra">{{ t.tarifa_por_dia|pesos }} por día</span>
+                    <span class="historial__estado">{% if t.activa %}<span class="estado estado--verde"><i class="bi bi-check2-circle" aria-hidden="true"></i>Vigente</span>{% else %}<span class="estado estado--piedra"><i class="bi bi-clock-history" aria-hidden="true"></i>Anterior</span>{% endif %}</span>
+                </li>
+                {% empty %}<li class="historial__fila">Sin registros.</li>{% endfor %}
+            </ol>
+        </section>
     </div>
 </div>
 {% endblock %}

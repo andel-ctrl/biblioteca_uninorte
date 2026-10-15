@@ -1,0 +1,18 @@
+{% extends 'componentes/base_confirmacion.html' %}
+{% load biblioteca_ui %}
+{% block title %}Registrar pago de multa — Biblioteca{% endblock %}
+{% block ref %}Préstamo {{ prestamo.pk|stringformat:"04d" }} · ejemplar {{ prestamo.ejemplar.codigo_barras }}{% endblock %}
+{% block titulo %}Registrar <em>pago</em>{% endblock %}
+{% block resumen %}
+<div><dt>Lector</dt><dd>{{ prestamo.usuario.get_nombre_completo }} <span class="mono">({{ prestamo.usuario.codigo_universitario }})</span></dd></div>
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ prestamo.ejemplar.libro.titulo }}</dd></div>
+<div><dt>Devuelto</dt><dd class="cifra">{{ devolucion.fecha_devolucion|date:"d/m/Y" }}{% if devolucion.observacion == 'perdido' %} · pérdida{% endif %}</dd></div>
+<div><dt>Multa</dt><dd class="cifra"><strong>{{ devolucion.monto_multa|pesos }}</strong></dd></div>
+{% endblock %}
+{% block consecuencias %}
+<li>La multa queda marcada como <strong>pagada</strong> y deja de aparecer como pendiente para el lector.</li>
+<li>Confirma solo si el pago ya se recibió en el mostrador.</li>
+{% endblock %}
+{% block campos %}{% if siguiente %}<input type="hidden" name="next" value="{{ siguiente }}">{% endif %}{% endblock %}
+{% block boton %}<i class="bi bi-cash-coin" aria-hidden="true"></i> Registrar pago de {{ devolucion.monto_multa|pesos }}{% endblock %}
+{% block cancelar_url %}{% if siguiente %}{{ siguiente }}{% else %}{% url 'prestamos:prestamo_detail' prestamo.pk %}{% endif %}{% endblock %}

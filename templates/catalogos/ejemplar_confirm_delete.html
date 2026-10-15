@@ -1,20 +1,19 @@
-{% extends 'base.html' %}
-{% block title %}Eliminar ejemplar{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white"><i class="bi bi-trash me-2"></i>Eliminar ejemplar</div>
-            <div class="card-body">
-                <p>¿Estás seguro de que deseas eliminar el ejemplar <strong>{{ ejemplar.codigo_barras }}</strong> de <strong>{{ ejemplar.libro.titulo }}</strong>?</p>
-                <p class="text-muted small">Ubicación: {{ ejemplar.ubicacion }}. Estado: {{ ejemplar.get_estado_display }}. Esta acción no se puede deshacer.</p>
-                <form method="post" class="d-flex gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Sí, eliminar</button>
-                    <a href="{% url 'catalogos:libro_detail' ejemplar.libro.pk %}" class="btn btn-outline-secondary">Cancelar</a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% load biblioteca_ui %}
+{% block title %}Eliminar ejemplar — Biblioteca{% endblock %}
+{% block tono %}peligro{% endblock %}
+{% block ref %}Eliminación de un ejemplar{% endblock %}
+{% block titulo %}¿Eliminar este <em>ejemplar</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ ejemplar.libro.titulo }}</dd></div>
+<div><dt>Código</dt><dd class="mono">{{ ejemplar.codigo_barras }}</dd></div>
+<div><dt>Ubicación</dt><dd>{{ ejemplar.ubicacion }}</dd></div>
+<div><dt>Estado</dt><dd>{% estado ejemplar.estado 'ejemplar' %}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>El ejemplar deja de existir en el catálogo. No se puede deshacer.</li>
+<li>Si tiene préstamos registrados <strong>no se podrá eliminar</strong>; en ese caso márcalo como perdido o en mantenimiento.</li>
+{% endblock %}
+{% block boton_clase %}btn-danger{% endblock %}
+{% block boton %}Sí, eliminar el ejemplar{% endblock %}
+{% block cancelar_url %}{% url 'catalogos:libro_detail' ejemplar.libro.pk %}{% endblock %}

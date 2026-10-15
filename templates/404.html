@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load biblioteca_ui %}
+{% comment %}
+Página 404. Django la muestra cuando DEBUG=False (en desarrollo se ve en /404/, ver config/urls.py).
+La ilustración es una ficha del antiguo catálogo de gavetas: la dirección pedida es su "signatura".
+{% endcomment %}
+{% block title %}Página no encontrada — Biblioteca{% endblock %}
+{% block content %}
+<section class="error-ficha" aria-labelledby="titulo-error">
+    <div class="error-ficha__texto">
+        <p class="encabezado__ref">Error 404 · Ficha no encontrada</p>
+        <h1 id="titulo-error" class="error-ficha__titulo">Esta página no está en el <em>estante</em></h1>
+        <p class="error-ficha__bajada">Buscamos en todas las gavetas del catálogo y no hay ninguna ficha con esa dirección. Puede que el enlace esté mal escrito o que el registro haya sido retirado.</p>
+
+        {% if user.is_authenticated %}
+        <form class="error-ficha__buscar" method="get" action="{% url 'catalogos:libro_list' %}" role="search">
+            <label class="visually-hidden" for="buscar-404">Buscar en el catálogo</label>
+            <span class="error-ficha__campo">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" id="buscar-404" name="q" class="form-control" placeholder="¿Buscabas un libro? Título, autor o ISBN">
+            </span>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </form>
+        {% endif %}
+
+        <div class="error-ficha__acciones">
+            {% if not user.is_authenticated %}
+            <a class="btn btn-primary" href="{% url 'login' %}">Iniciar sesión <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            {% elif es_bibliotecario %}
+            <a class="btn btn-primary" href="{% url 'reportes:dashboard' %}">Ir a la mesa de trabajo <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            <a class="btn btn-outline-secondary" href="{% url 'catalogos:libro_list' %}">Ver el catálogo</a>
+            {% else %}
+            <a class="btn btn-primary" href="{% url 'catalogos:inicio' %}">Volver al inicio <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            <a class="btn btn-outline-secondary" href="{% url 'usuarios:mi_historial' %}">Mis préstamos</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="error-ficha__ilustracion" aria-hidden="true">
+        <div class="ficha-catalogo ficha-catalogo--detras"></div>
+        <div class="ficha-catalogo">
+            <div class="ficha-catalogo__cabeza">
+                <span>Biblioteca Karl C. Parrish Jr.</span>
+                <span class="ficha-catalogo__num">N.º 404</span>
+            </div>
+            <dl class="ficha-catalogo__datos">
+                <div><dt>Signatura</dt><dd class="ficha-catalogo__ruta">{{ request_path|default:request.path|truncatechars:38 }}</dd></div>
+                <div><dt>Título</dt><dd>— sin registro —</dd></div>
+                <div><dt>Ubicación</dt><dd>Sala ? · Estante ?</dd></div>
+                <div><dt>Consulta</dt><dd>{% now "d/m/Y · H:i" %}</dd></div>
+            </dl>
+            <div class="ficha-catalogo__sello">{% estado 'vencido' 'prestamo' 'No encontrado' %}</div>
+            <span class="ficha-catalogo__agujero"></span>
+        </div>
+    </div>
+</section>
+{% endblock %}

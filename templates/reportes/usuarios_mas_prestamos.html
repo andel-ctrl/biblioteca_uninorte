@@ -1,94 +1,53 @@
 {% extends 'base.html' %}
-{% block title %}Lectores Más Activos — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Lectores más activos — Biblioteca{% endblock %}
 {% block content %}
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Estadísticas de Usuarios</span>
-        <h1 class="display-6 fw-bold mb-1">Usuarios con Más Préstamos</h1>
-        <p class="text-muted mb-0">Ranking de lectores universitarios con mayor actividad en el sistema.</p>
+        <p class="encabezado__ref">Actividad de lectores</p>
+        <h1 class="encabezado__titulo">Lectores más <em>activos</em></h1>
+        <p class="encabezado__bajada">Solo cuentan los préstamos aprobados; las solicitudes pendientes o rechazadas no suman.</p>
     </div>
-    {% include 'reportes/_filtro_fechas.html' %}
-</div>
+</header>
+{% if desde or hasta %}{% with d=desde|date:"d/m/Y"|default:"el inicio" h=hasta|date:"d/m/Y" %}{% include 'componentes/_colofon.html' with dato='Periodo: '|add:d|add:' — '|add:h %}{% endwith %}
+{% else %}{% include 'componentes/_colofon.html' with dato='Histórico total' %}{% endif %}
 
-<div class="card shadow-sm mb-5">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 font-serif">Top 20 Lectores Frecuentes</h5>
-        <span class="small text-muted">{% if desde or hasta %}Período: {% if desde %}{{ desde|date:"d/m/Y" }}{% else %}inicio{% endif %} a {{ hasta|date:"d/m/Y" }}{% else %}Histórico total{% endif %}. Solo préstamos aprobados.</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th style="width: 70px;">Rank</th>
-                    <th>Nombre & Apellidos</th>
-                    <th>Código Universitario</th>
-                    <th>Rol</th>
-                    <th>Estado</th>
-                    <th class="text-center" style="width: 130px;">Total Préstamos</th>
-                    <th class="text-center">Activos</th>
-                    <th class="text-center">Vencidos</th>
-                    <th class="text-center">Devueltos</th>
-                    <th class="text-center">Perdidos</th>
-                    <th class="text-end">Historial</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in usuarios %}
-                <tr>
-                    <td class="align-middle">
-                        {% if forloop.counter == 1 %}
-                        <span class="brand-badge bg-warning text-dark fw-bold" style="width: 30px; height: 30px;">1</span>
-                        {% elif forloop.counter == 2 %}
-                        <span class="brand-badge text-dark fw-bold" style="width: 30px; height: 30px; background: #E2E8F0;">2</span>
-                        {% elif forloop.counter == 3 %}
-                        <span class="brand-badge text-white fw-bold" style="width: 30px; height: 30px; background: var(--color-terracotta);">3</span>
-                        {% else %}
-                        <span class="text-muted fw-bold ps-2 font-monospace">{{ forloop.counter }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="align-middle">
-                        <div class="fw-semibold">{{ u.get_nombre_completo }}</div>
-                        <small class="text-muted">{{ u.user.email }}</small>
-                    </td>
-                    <td class="align-middle font-monospace small">
-                        {{ u.codigo_universitario }}
-                    </td>
-                    <td class="align-middle">
-                        <span class="user-role-tag">{{ u.get_rol_display }}</span>
-                    </td>
-                    <td class="align-middle">
-                        {% if u.esta_activo %}
-                        <span class="badge-status badge-disponible">Activo</span>
-                        {% else %}
-                        <span class="badge-status badge-vencido">Bloqueado</span>
-                        {% endif %}
-                    </td>
-                    <td class="align-middle text-center">
-                        <span class="badge-status badge-prestado fs-6 px-3 py-1 font-monospace">
-                            <i class="bi bi-journal-bookmark me-1"></i> {{ u.total_prestamos }}
-                        </span>
-                    </td>
-                    <td class="align-middle text-center">{{ u.total_activos }}</td>
-                    <td class="align-middle text-center{% if u.total_vencidos %} text-danger fw-bold{% endif %}">{{ u.total_vencidos }}</td>
-                    <td class="align-middle text-center">{{ u.total_devueltos }}</td>
-                    <td class="align-middle text-center{% if u.total_perdidos %} text-danger fw-bold{% endif %}">{{ u.total_perdidos }}</td>
-                    <td class="align-middle text-end">
-                        <a href="{% url 'usuarios:usuario_detail' u.pk %}" class="btn btn-sm btn-outline-forest">
-                            Ver Historial
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="11" class="text-center py-5 text-muted">
-                        No hay usuarios con préstamos en el período seleccionado.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+{% include 'reportes/_filtro_fechas.html' %}
 
+{% if usuarios %}
+<div class="tabla-desplazable"><table class="table tabla tabla--apilada table-hover">
+    <thead>
+        <tr>
+            <th scope="col">N.º</th><th scope="col">Lector</th><th scope="col">Estado</th>
+            <th scope="col" class="text-end">Total</th><th scope="col" class="text-end">Activos</th><th scope="col" class="text-end">Vencidos</th>
+            <th scope="col" class="text-end">Devueltos</th><th scope="col" class="text-end">Perdidos</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in usuarios %}
+        <tr>
+            <td data-label="N.º"><span class="ranking__puesto ranking__puesto--chico">{{ forloop.counter }}</span></td>
+            <td data-label="Lector" class="col-ancha">
+                <div>
+                    <a class="tabla__titulo text-decoration-none" href="{% url 'usuarios:usuario_detail' u.pk %}">{{ u.get_nombre_completo }}</a>
+                    <span class="tabla__meta"><span class="mono">{{ u.codigo_universitario }}</span> · {{ u.get_rol_display }}</span>
+                    <span class="ranking__barra" aria-hidden="true"><span style="width: {% widthratio u.total_prestamos usuarios.0.total_prestamos 100 %}%"></span></span>
+                </div>
+            </td>
+            <td data-label="Estado">{% estado u.estado 'usuario' %}</td>
+            <td data-label="Total" class="text-end"><strong class="cifra">{{ u.total_prestamos }}</strong></td>
+            <td data-label="Activos" class="text-end cifra">{{ u.total_activos }}</td>
+            <td data-label="Vencidos" class="text-end cifra {% if u.total_vencidos %}text-danger fw-semibold{% endif %}">{{ u.total_vencidos }}</td>
+            <td data-label="Devueltos" class="text-end cifra">{{ u.total_devueltos }}</td>
+            <td data-label="Perdidos" class="text-end cifra {% if u.total_perdidos %}text-danger fw-semibold{% endif %}">{{ u.total_perdidos }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table></div>
+{% else %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>No hay usuarios con préstamos en el período seleccionado</h2>
+</div>
+{% endif %}
 {% endblock %}

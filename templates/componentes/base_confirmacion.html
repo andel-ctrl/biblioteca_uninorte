@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% comment %}
+Plantilla común de confirmaciones. Bloques: ref, titulo, resumen (qué se afecta, como <dl>),
+consecuencias (lista <li>), campos (opcional), boton_clase, boton, cancelar_url, tono ("peligro" o "neutro").
+{% endcomment %}
+{% block content %}
+<div class="confirmacion confirmacion--{% block tono %}neutro{% endblock %}">
+    <p class="encabezado__ref">{% block ref %}{% endblock %}</p>
+    <h1 class="confirmacion__titulo">{% block titulo %}{% endblock %}</h1>
+
+    <dl class="confirmacion__resumen">{% block resumen %}{% endblock %}</dl>
+
+    <div class="confirmacion__consecuencias">
+        <p class="confirmacion__subtitulo">Al confirmar</p>
+        <ul>{% block consecuencias %}{% endblock %}</ul>
+    </div>
+
+    <form method="post" class="confirmacion__form">
+        {% csrf_token %}
+        {% block campos %}{% endblock %}
+        <div class="formulario__acciones">
+            <button type="submit" class="btn {% block boton_clase %}btn-primary{% endblock %}">{% block boton %}Confirmar{% endblock %}</button>
+            <a href="{% block cancelar_url %}{% url 'home' %}{% endblock %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

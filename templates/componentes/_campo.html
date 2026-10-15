@@ -1,0 +1,17 @@
+{% comment %}
+Campo de formulario con etiqueta, ayuda y todos sus errores.
+La clase campo--<tipo> (textarea, selectmultiple, checkbox, clearablefile...) permite ajustar su ancho.
+{% endcomment %}
+<div class="campo campo--{{ field.widget_type }}{% if ancho %} campo--ancho{% endif %}{% if field.errors %} campo--error{% endif %}">
+    {% if field.widget_type == 'checkbox' %}
+    <div class="form-check">
+        {{ field }}
+        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    </div>
+    {% else %}
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="campo__obligatorio" aria-hidden="true">*</span>{% endif %}</label>
+    {{ field }}
+    {% endif %}
+    {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+</div>

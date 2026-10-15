@@ -2,6 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.db.models import Q, Count, Sum, ProtectedError
 from .models import Libro, Ejemplar, Autor, Categoria
 from apps.prestamos.models import Prestamo, Devolucion
@@ -44,10 +46,11 @@ def libro_list(request):
 
     if query:
         libros = libros.filter(
-            Q(titulo__icontains=query) |
+            # unaccent: sin importar tildes ni mayúsculas ("garcia" encuentra "GARCÍA")
+            Q(titulo__unaccent__icontains=query) |
             Q(isbn__icontains=query) |
-            Q(autores__nombre__icontains=query) |
-            Q(autores__apellido__icontains=query)
+            Q(autores__nombre__unaccent__icontains=query) |
+            Q(autores__apellido__unaccent__icontains=query)
         ).distinct()
 
     if categoria_id:
@@ -125,7 +128,10 @@ def inicio(request):
 def libro_detail(request, pk):
     libro = get_object_or_404(Libro, pk=pk)
     ejemplares = libro.ejemplares.all()
-    return render(request, 'catalogos/libro_detail.html', {'libro': libro, 'ejemplares': ejemplares})
+    # Si el lector no puede pedir libros ahora, la ficha lo explica en lugar de ofrecer «Solicitar»
+    perfil = getattr(request.user, 'perfil', None)
+    restriccion = perfil.mensaje_restriccion() if perfil and not perfil.es_bibliotecario() else ''
+    return render(request, 'catalogos/libro_detail.html', {'libro': libro, 'ejemplares': ejemplares, 'restriccion': restriccion})
 
 
 @bibliotecario_required
@@ -134,7 +140,7 @@ def libro_create(request):
         form = LibroForm(request.POST, request.FILES)
         if form.is_valid():
             libro = form.save()
-            messages.success(request, f'Libro "{libro.titulo}" creado correctamente.')
+            messages.success(request, f'Libro «{libro.titulo}» creado correctamente.')
             return redirect('catalogos:libro_detail', pk=libro.pk)
     else:
         form = LibroForm()
@@ -164,9 +170,9 @@ def libro_delete(request, pk):
             libro.delete()
         except ProtectedError:
             # PROTECT en Prestamo.ejemplar impide borrar ejemplares con historial de préstamos
-            messages.error(request, f'No se puede eliminar "{titulo}" porque sus ejemplares tienen préstamos registrados. Esto protege el historial.')
+            messages.error(request, f'No se puede eliminar «{titulo}» porque sus ejemplares tienen préstamos registrados. Esto protege el historial.')
             return redirect('catalogos:libro_detail', pk=pk)
-        messages.success(request, f'Libro "{titulo}" eliminado.')
+        messages.success(request, f'Libro «{titulo}» eliminado.')
         return redirect('catalogos:libro_list')
     return render(request, 'catalogos/libro_confirm_delete.html', {'libro': libro})
 
@@ -211,7 +217,7 @@ def ejemplar_delete(request, pk):
         try:
             ejemplar.delete()
         except ProtectedError:
-            messages.error(request, f'No se puede eliminar el ejemplar {ejemplar.codigo_barras} porque tiene préstamos registrados. Si ya no está en circulación, márquelo como perdido.')
+            messages.error(request, f'No se puede eliminar el ejemplar {ejemplar.codigo_barras} porque tiene préstamos registrados. Si ya no está en circulación, márcalo como perdido.')
             return redirect('catalogos:libro_detail', pk=libro_pk)
         messages.success(request, 'Ejemplar eliminado.')
         return redirect('catalogos:libro_detail', pk=libro_pk)
@@ -222,8 +228,22 @@ def ejemplar_delete(request, pk):
 
 @login_required
 def autor_list(request):
-    autores = Autor.objects.annotate(total_libros=Count('libros'))
+    # Con annotate (GROUP BY) Django no aplica el orden del Meta: se indica explícito
+    autores = Autor.objects.annotate(total_libros=Count('libros')).order_by('apellido', 'nombre')
     return render(request, 'catalogos/autor_list.html', {'autores': autores})
+
+
+@bibliotecario_required
+@require_POST
+def autor_rapido(request):
+    """Crea un autor desde el formulario del libro (sin salir de la página). Responde JSON.
+    Si ya existe uno con el mismo nombre y apellido, devuelve ese en lugar de duplicarlo."""
+    form = AutorForm(request.POST, evitar_duplicados=False)
+    if not form.is_valid():
+        return JsonResponse({'errores': {campo: [str(e) for e in errs] for campo, errs in form.errors.items()}}, status=400)
+    existente = Autor.buscar_igual(form.cleaned_data['nombre'], form.cleaned_data['apellido'])
+    autor = existente or form.save()
+    return JsonResponse({'id': autor.pk, 'texto': str(autor), 'existente': bool(existente)}, status=200 if existente else 201)
 
 
 @bibliotecario_required
@@ -237,3 +257,33 @@ def autor_create(request):
     else:
         form = AutorForm()
     return render(request, 'catalogos/autor_form.html', {'form': form})
+
+
+@bibliotecario_required
+def autor_edit(request, pk):
+    autor = get_object_or_404(Autor, pk=pk)
+    if request.method == 'POST':
+        form = AutorForm(request.POST, instance=autor)
+        if form.is_valid():
+            form.save()
+            n = autor.libros.count()
+            messages.success(request, f'Autor «{autor}» actualizado' + (f' en sus {n} libros.' if n > 1 else ' en su libro.' if n == 1 else '.'))
+            return redirect('catalogos:autor_list')
+    else:
+        form = AutorForm(instance=autor)
+    return render(request, 'catalogos/autor_form.html', {'form': form, 'autor': autor})
+
+
+@bibliotecario_required
+def autor_delete(request, pk):
+    autor = get_object_or_404(Autor.objects.annotate(total_libros=Count('libros')), pk=pk)
+    # Un libro necesita al menos un autor: solo se elimina un autor sin libros asociados
+    if autor.total_libros:
+        messages.error(request, f'No se puede eliminar a «{autor}» porque tiene {autor.total_libros} libro{"s" if autor.total_libros > 1 else ""} asociado{"s" if autor.total_libros > 1 else ""}. Si el nombre está mal escrito, edítalo.')
+        return redirect('catalogos:autor_list')
+    if request.method == 'POST':
+        nombre = str(autor)
+        autor.delete()
+        messages.success(request, f'Autor «{nombre}» eliminado.')
+        return redirect('catalogos:autor_list')
+    return render(request, 'catalogos/autor_confirm_delete.html', {'autor': autor})

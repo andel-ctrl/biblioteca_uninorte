@@ -1,26 +1,18 @@
-{% extends 'base.html' %}
-{% block title %}Confirmar Solicitud{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-success">
-            <div class="card-header bg-success text-white"><i class="bi bi-bookmark-plus me-2"></i>Solicitar Préstamo</div>
-            <div class="card-body">
-                <p>¿Confirmas la solicitud del préstamo para el siguiente ejemplar?</p>
-                <div class="alert alert-light border">
-                    <strong>Libro:</strong> {{ ejemplar.libro.titulo }}<br>
-                    <strong>Código:</strong> <code>{{ ejemplar.codigo_barras }}</code><br>
-                    <strong>Ubicación:</strong> {{ ejemplar.ubicacion }}<br>
-                    <strong>Estado:</strong> <span class="badge bg-success">Disponible</span>
-                </div>
-                <p class="text-muted small">La solicitud será revisada y aprobada por el bibliotecario.</p>
-                <form method="post" class="d-flex gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Sí, solicitar</button>
-                    <a href="{% url 'catalogos:libro_detail' ejemplar.libro.pk %}" class="btn btn-outline-secondary">Cancelar</a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% load biblioteca_ui %}
+{% block title %}Solicitar préstamo — Biblioteca{% endblock %}
+{% block ref %}Solicitud de préstamo{% endblock %}
+{% block titulo %}¿Solicitar este <em>libro</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Libro</dt><dd class="confirmacion__obra">{{ ejemplar.libro.titulo }}</dd></div>
+<div><dt>Ejemplar</dt><dd class="mono">{{ ejemplar.codigo_barras }}</dd></div>
+<div><dt>Ubicación</dt><dd>{{ ejemplar.ubicacion }}</dd></div>
+<div><dt>Estado</dt><dd>{% estado ejemplar.estado 'ejemplar' %}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>Tu solicitud quedará <strong>pendiente</strong> hasta que el personal de la biblioteca la apruebe.</li>
+<li>Al aprobarla se fijará la <strong>fecha de devolución</strong>; la verás en «Mis préstamos».</li>
+<li>Si devuelves el libro después de esa fecha se cobra una multa por cada día de retraso.</li>
+{% endblock %}
+{% block boton %}<i class="bi bi-bookmark-plus" aria-hidden="true"></i> Sí, solicitar préstamo{% endblock %}
+{% block cancelar_url %}{% url 'catalogos:libro_detail' ejemplar.libro.pk %}{% endblock %}

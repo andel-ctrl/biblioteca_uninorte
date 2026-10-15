@@ -3,9 +3,9 @@
 {% block title %}Mis préstamos — Biblioteca{% endblock %}
 {% block content %}
 
-<header class="encabezado">
+<header class="encabezado encabezado--patron encabezado--molinete">
     <div>
-        <p class="encabezado__ref"><span class="signatura">LEC</span> Ficha de lector · {{ perfil.codigo_universitario }}</p>
+        <p class="encabezado__ref">Ficha de lector · {{ perfil.codigo_universitario }}</p>
         <h1 class="encabezado__titulo">Mis <em>préstamos</em></h1>
         <p class="encabezado__bajada">Lo que tienes en tus manos, lo que espera aprobación y todo lo que ya devolviste.</p>
     </div>
@@ -25,7 +25,7 @@
 {% if multas_pendientes_total %}
 <div class="aviso aviso--warning mb-4" role="status">
     <i class="bi bi-cash-coin" aria-hidden="true"></i>
-    <div class="aviso__texto">Tienes <strong>${{ multas_pendientes_total }}</strong> en multas pendientes de pago. El pago se registra en el mostrador de la biblioteca.</div>
+    <div class="aviso__texto">Tienes <strong>{{ multas_pendientes_total|pesos }}</strong> en multas pendientes de pago. El pago se registra en el mostrador de la biblioteca.</div>
 </div>
 {% endif %}
 
@@ -58,7 +58,7 @@
         <div class="prestamo-fila__estado">
             {% estado p.estado 'prestamo' %}
             {% if p.estado == 'vencido' %}
-            <span class="prestamo-fila__nota prestamo-fila__nota--alerta">{{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} de retraso · mora ${{ p.multa_estimada }}</span>
+            <span class="prestamo-fila__nota prestamo-fila__nota--alerta">{{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} de retraso · mora {{ p.multa_estimada|pesos }}</span>
             {% elif p.dias_restantes == 0 %}
             <span class="prestamo-fila__nota prestamo-fila__nota--aviso">Vence hoy</span>
             {% else %}
@@ -103,14 +103,14 @@
             <div class="historial__libro">
                 <a href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a>
                 <span class="tabla__meta">
-                    {% if p.estado == 'rechazado' %}Solicitud no aprobada
+                    {% if p.estado == 'rechazado' %}{% if p.observaciones %}{{ p.observaciones }}{% else %}Solicitud no aprobada{% endif %}
                     {% elif p.devolucion %}{% if p.estado == 'perdido' %}Pérdida registrada{% else %}Devuelto{% endif %} el {{ p.devolucion.fecha_devolucion|date:"d/m/Y" }}{% if p.devolucion.observacion and p.estado != 'perdido' %} · {{ p.devolucion.get_observacion_display }}{% endif %}{% endif %}
                 </span>
             </div>
             <span class="historial__estado">{% estado p.estado 'prestamo' %}</span>
             <span class="historial__multa">
                 {% if p.devolucion and p.devolucion.monto_multa > 0 %}
-                <span class="cifra">${{ p.devolucion.monto_multa }}</span>
+                <span class="cifra">{{ p.devolucion.monto_multa|pesos }}</span>
                 {% if p.devolucion.multa_pagada %}{% estado 'pagada' 'multa' 'Pagada' %}{% else %}{% estado 'pendiente' 'multa' 'Por pagar' %}{% endif %}
                 {% else %}<span class="historial__sin">Sin multa</span>{% endif %}
             </span>

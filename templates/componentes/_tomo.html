@@ -1,0 +1,15 @@
+{% comment %}
+Libro con volumen: tapa (portada o lomo tipográfico), canto de páginas y contratapa.
+Con imagen, la tapa toma la proporción exacta de la portada y el volumen se ajusta a ella.
+Parámetros: libro; alt (opcional, texto alternativo de la portada).
+{% endcomment %}
+<span class="tomo{% if not libro.portada %} lomo--{{ libro.pk|stringformat:'d'|slice:'-1:' }}{% endif %}">
+    <span class="tomo__cuerpo">
+        <span class="tomo__contratapa"></span>
+        <span class="tomo__paginas"></span>
+        <span class="tomo__tapa">
+            {% if libro.portada %}<img src="{{ libro.portada.url }}" alt="{{ alt|default:'' }}" loading="lazy">
+            {% else %}<span class="lomo lomo--{{ libro.pk|stringformat:'d'|slice:'-1:' }}" aria-hidden="true"><span class="lomo__inicial">{{ libro.titulo|first|upper }}</span><span class="lomo__anio">{{ libro.anio_publicacion }}</span></span>{% endif %}
+        </span>
+    </span>
+</span>

@@ -1,20 +1,19 @@
-{% extends 'base.html' %}
-{% block title %}Eliminar Usuario{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white">Eliminar Usuario</div>
-            <div class="card-body">
-                <p>¿Estás seguro de eliminar a <strong>{{ usuario.get_nombre_completo }}</strong>?</p>
-                <p class="text-muted small">Se eliminará el usuario y todos sus datos de acceso. Los préstamos quedarán registrados.</p>
-                <form method="post" class="d-flex gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Sí, eliminar</button>
-                    <a href="{% url 'usuarios:usuario_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+{% extends 'componentes/base_confirmacion.html' %}
+{% load biblioteca_ui %}
+{% block title %}Eliminar usuario — Biblioteca{% endblock %}
+{% block tono %}peligro{% endblock %}
+{% block ref %}Eliminación de una cuenta{% endblock %}
+{% block titulo %}¿Eliminar este <em>usuario</em>?{% endblock %}
+{% block resumen %}
+<div><dt>Nombre</dt><dd class="confirmacion__obra">{{ usuario.get_nombre_completo }}</dd></div>
+<div><dt>Código</dt><dd class="mono">{{ usuario.codigo_universitario }}</dd></div>
+<div><dt>Rol</dt><dd>{{ usuario.get_rol_display }}</dd></div>
+<div><dt>Estado</dt><dd>{% estado usuario.estado 'usuario' %}</dd></div>
 {% endblock %}
+{% block consecuencias %}
+<li>Se eliminan la cuenta de acceso y la ficha del usuario. No se puede deshacer.</li>
+<li>Si tiene préstamos registrados <strong>no se podrá eliminar</strong>, para proteger el historial. En ese caso, <strong>bloquéalo</strong> desde «Editar».</li>
+{% endblock %}
+{% block boton_clase %}btn-danger{% endblock %}
+{% block boton %}Sí, eliminar el usuario{% endblock %}
+{% block cancelar_url %}{% url 'usuarios:usuario_detail' usuario.pk %}{% endblock %}

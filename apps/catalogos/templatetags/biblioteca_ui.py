@@ -11,6 +11,8 @@ Uso:
 from django import template
 from django.utils.html import format_html
 
+from apps.catalogos.formato import formato_pesos
+
 register = template.Library()
 
 # (texto, ícono de Bootstrap Icons, tono). El tono define el color en componentes.css (.estado--<tono>).
@@ -54,3 +56,25 @@ def estado(valor, tipo='prestamo', texto=None):
         '<span class="estado estado--{}"><i class="bi {}" aria-hidden="true"></i>{}</span>',
         tono, icono, texto or texto_def,
     )
+
+
+@register.filter
+def pesos(valor):
+    """{{ monto|pesos }} → $1.500"""
+    return formato_pesos(valor)
+
+
+@register.filter
+def faltan(fecha):
+    """Tiempo hasta una fecha en días naturales: «hoy», «mañana», «en 12 días» o «hace 3 días»."""
+    from django.utils import timezone
+    if not fecha:
+        return ''
+    dias = (fecha - timezone.localdate()).days
+    if dias == 0:
+        return 'hoy'
+    if dias == 1:
+        return 'mañana'
+    if dias > 1:
+        return f'en {dias} días'
+    return f'hace {-dias} día{"s" if dias < -1 else ""}'
