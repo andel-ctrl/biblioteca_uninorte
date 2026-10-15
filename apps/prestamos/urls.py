@@ -10,4 +10,6 @@ urlpatterns = [
     path('<int:pk>/aprobar/', views.prestamo_aprobar, name='prestamo_aprobar'),
     path('<int:pk>/rechazar/', views.prestamo_rechazar, name='prestamo_rechazar'),
     path('<int:prestamo_pk>/devolver/', views.devolucion_registrar, name='devolucion_registrar'),
+    path('<int:pk>/perdida/', views.prestamo_reportar_perdida, name='prestamo_reportar_perdida'),
+    path('multa/', views.multa_config, name='multa_config'),
 ]

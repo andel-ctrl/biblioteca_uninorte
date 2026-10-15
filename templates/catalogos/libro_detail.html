@@ -145,6 +145,9 @@
                             <a href="{% url 'catalogos:ejemplar_edit' ej.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar ejemplar">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            <a href="{% url 'catalogos:ejemplar_delete' ej.pk %}" class="btn btn-sm btn-outline-danger" title="Eliminar ejemplar">
+                                <i class="bi bi-trash"></i>
+                            </a>
                         {% endif %}
                     </td>
                 </tr>

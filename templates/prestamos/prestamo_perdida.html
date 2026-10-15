@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Reportar pérdida — Préstamo #{{ prestamo.pk }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white"><i class="bi bi-exclamation-octagon me-2"></i>Reportar pérdida — Préstamo #{{ prestamo.pk }}</div>
+            <div class="card-body">
+                <div class="alert alert-light border">
+                    <strong>Usuario:</strong> {{ prestamo.usuario.get_nombre_completo }}<br>
+                    <strong>Libro:</strong> {{ prestamo.ejemplar.libro.titulo }}<br>
+                    <strong>Ejemplar:</strong> <code>{{ prestamo.ejemplar.codigo_barras }}</code><br>
+                    <strong>Vencimiento:</strong> {{ prestamo.fecha_vencimiento|date:"d/m/Y" }}
+                </div>
+                <p>Al confirmar:</p>
+                <ul class="small">
+                    <li>El préstamo se cerrará con estado <strong>Perdido</strong>.</li>
+                    <li>El ejemplar quedará como <strong>Perdido</strong> en el inventario.</li>
+                    <li>
+                        {% if multa_estimada > 0 %}
+                        Se registrará una multa de <strong>${{ multa_estimada }}</strong> por {{ prestamo.dias_retraso }} día(s) de retraso.
+                        {% else %}
+                        No hay días de retraso, por lo que no se registrará multa.
+                        {% endif %}
+                    </li>
+                </ul>
+                <p class="text-muted small">Si el ejemplar aparece después, edítelo desde el detalle del libro y márquelo como disponible.</p>
+                <form method="post" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-exclamation-octagon me-1"></i>Confirmar pérdida</button>
+                    <a href="{% url 'prestamos:prestamo_detail' prestamo.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

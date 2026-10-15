@@ -2,8 +2,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
-from .models import Prestamo, Devolucion
-from .forms import PrestamoForm, DevolucionForm
+from django.db import transaction
+from .models import Prestamo, Devolucion, ConfiguracionMulta
+from .forms import AprobarPrestamoForm, DevolucionForm, TarifaMultaForm
 from apps.catalogos.models import Ejemplar
 from apps.usuarios.models import UsuarioBiblioteca
 from apps.usuarios.decorators import bibliotecario_required, es_bibliotecario_o_staff
@@ -49,18 +50,13 @@ def prestamo_solicitar(request, ejemplar_pk):
 @bibliotecario_required
 def prestamo_list(request):
     estado = request.GET.get('estado', '')
+    Prestamo.actualizar_vencidos()
     prestamos = Prestamo.objects.select_related(
         'usuario__user', 'ejemplar__libro', 'aprobado_por__user'
     ).order_by('-fecha_solicitud')
 
     if estado:
         prestamos = prestamos.filter(estado=estado)
-
-    # Actualizar estado a vencido si aplica
-    for p in prestamos:
-        if p.esta_vencido():
-            p.estado = 'vencido'
-            p.save()
 
     return render(request, 'prestamos/prestamo_list.html', {
         'prestamos': prestamos,
@@ -90,16 +86,25 @@ def prestamo_aprobar(request, pk):
         messages.error(request, 'El ejemplar ya no está disponible.')
         return redirect('prestamos:prestamo_list')
 
-    if request.method == 'POST':
-        try:
-            perfil = request.user.perfil
-        except UsuarioBiblioteca.DoesNotExist:
-            perfil = None
-        prestamo.aprobar(perfil)
-        messages.success(request, f'Préstamo #{prestamo.pk} aprobado. Vence el {prestamo.fecha_vencimiento}.')
+    # Se valida otra vez: el usuario pudo ser bloqueado después de hacer la solicitud
+    if not prestamo.usuario.esta_activo():
+        messages.error(request, f'No se puede aprobar: el usuario {prestamo.usuario.get_nombre_completo()} está bloqueado.')
         return redirect('prestamos:prestamo_list')
 
-    return render(request, 'prestamos/prestamo_aprobar.html', {'prestamo': prestamo})
+    if request.method == 'POST':
+        form = AprobarPrestamoForm(request.POST)
+        if form.is_valid():
+            try:
+                perfil = request.user.perfil
+            except UsuarioBiblioteca.DoesNotExist:
+                perfil = None
+            prestamo.aprobar(perfil, form.cleaned_data['fecha_vencimiento'])
+            messages.success(request, f'Préstamo #{prestamo.pk} aprobado. Vence el {prestamo.fecha_vencimiento:%d/%m/%Y}.')
+            return redirect('prestamos:prestamo_list')
+    else:
+        form = AprobarPrestamoForm()
+
+    return render(request, 'prestamos/prestamo_aprobar.html', {'prestamo': prestamo, 'form': form})
 
 
 @bibliotecario_required
@@ -139,6 +144,12 @@ def devolucion_registrar(request, prestamo_pk):
                 f'Devolución registrada. Multa: ${devolucion.monto_multa}'
                 if devolucion.monto_multa > 0 else 'Devolución registrada sin multa.'
             )
+            if devolucion.estado_ejemplar_resultante() == 'mantenimiento':
+                messages.warning(
+                    request,
+                    f'El ejemplar {prestamo.ejemplar.codigo_barras} quedó en mantenimiento por la observación '
+                    f'"{devolucion.get_observacion_display()}". Cuando sea revisado, edítelo y márquelo como disponible.'
+                )
             return redirect('prestamos:prestamo_list')
     else:
         form = DevolucionForm()
@@ -148,4 +159,58 @@ def devolucion_registrar(request, prestamo_pk):
         'form': form,
         'prestamo': prestamo,
         'multa_estimada': multa_estimada,
+    })
+
+
+@bibliotecario_required
+def prestamo_reportar_perdida(request, pk):
+    prestamo = get_object_or_404(Prestamo, pk=pk, estado__in=['activo', 'vencido'])
+
+    if request.method == 'POST':
+        try:
+            perfil = request.user.perfil
+        except UsuarioBiblioteca.DoesNotExist:
+            perfil = None
+        devolucion = prestamo.reportar_perdida(perfil)
+        messages.warning(
+            request,
+            f'Préstamo #{prestamo.pk} cerrado por pérdida. El ejemplar {prestamo.ejemplar.codigo_barras} quedó como perdido.'
+            + (f' Multa por mora: ${devolucion.monto_multa}.' if devolucion.monto_multa > 0 else ' Sin multa por mora.')
+        )
+        return redirect('prestamos:prestamo_detail', pk=prestamo.pk)
+
+    return render(request, 'prestamos/prestamo_perdida.html', {
+        'prestamo': prestamo,
+        'multa_estimada': prestamo.multa_estimada(),
+    })
+
+# Tarifa de multa (solo bibliotecario)
+
+@bibliotecario_required
+def multa_config(request):
+    vigente = ConfiguracionMulta.objects.filter(activa=True).order_by('-vigencia_desde', '-pk').first()
+
+    if request.method == 'POST':
+        form = TarifaMultaForm(request.POST)
+        if form.is_valid():
+            nueva_tarifa = form.cleaned_data['tarifa_por_dia']
+            if vigente and vigente.tarifa_por_dia == nueva_tarifa:
+                messages.info(request, f'La tarifa ya es ${nueva_tarifa} por día. No se hicieron cambios.')
+                return redirect('prestamos:multa_config')
+            # No se sobrescribe la tarifa anterior: se desactiva y se crea un registro nuevo (queda el historial)
+            with transaction.atomic():
+                ConfiguracionMulta.objects.filter(activa=True).update(activa=False)
+                ConfiguracionMulta.objects.create(
+                    tarifa_por_dia=nueva_tarifa, vigencia_desde=timezone.localdate(), activa=True
+                )
+            messages.success(request, f'Nueva tarifa de multa: ${nueva_tarifa} por día, vigente desde hoy.')
+            return redirect('prestamos:multa_config')
+    else:
+        form = TarifaMultaForm(initial={'tarifa_por_dia': vigente.tarifa_por_dia if vigente else None})
+
+    historial = ConfiguracionMulta.objects.order_by('-vigencia_desde', '-pk')
+    return render(request, 'prestamos/multa_config.html', {
+        'form': form,
+        'vigente': vigente,
+        'historial': historial,
     })

@@ -135,6 +135,8 @@
                         <span class="badge-status badge-devuelto">Devuelto</span>
                         {% elif p.estado == 'rechazado' %}
                         <span class="badge-status badge-vencido">Rechazado</span>
+                        {% elif p.estado == 'perdido' %}
+                        <span class="badge-status badge-perdido">Perdido</span>
                         {% endif %}
                     </td>
                     <td class="text-end">

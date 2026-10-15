@@ -20,6 +20,11 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">{{ field.label }}</label>
                         {{ field }}
+                        {% if field.name == 'autores' %}
+                        <div class="form-text">
+                            ¿El autor no está en la lista? <a href="{% url 'catalogos:autor_create' %}" target="_blank">Crear nuevo autor</a> y luego recargue esta página.
+                        </div>
+                        {% endif %}
                         {% if field.errors %}
                         <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
                         {% endif %}

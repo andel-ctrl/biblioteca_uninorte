@@ -12,11 +12,21 @@
                     <strong>Ejemplar:</strong> <code>{{ prestamo.ejemplar.codigo_barras }}</code><br>
                     <strong>Solicitud:</strong> {{ prestamo.fecha_solicitud|date:"d/m/Y H:i" }}
                 </div>
-                <p class="text-muted small">Al aprobar, el ejemplar se marcará como <em>prestado</em> y se asignará fecha de vencimiento (15 días por defecto).</p>
-                <form method="post" class="d-flex gap-2">
+                <p class="text-muted small">Al aprobar, el ejemplar se marcará como <em>prestado</em>. La fecha de préstamo será hoy ({% now "d/m/Y" %}).</p>
+                <form method="post">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Aprobar</button>
-                    <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.fecha_vencimiento.id_for_label }}">{{ form.fecha_vencimiento.label }}</label>
+                        {{ form.fecha_vencimiento }}
+                        <div class="form-text">{{ form.fecha_vencimiento.help_text }}</div>
+                        {% if form.fecha_vencimiento.errors %}
+                        <div class="invalid-feedback d-block">{{ form.fecha_vencimiento.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Aprobar</button>
+                        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
                 </form>
             </div>
         </div>

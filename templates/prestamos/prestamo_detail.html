@@ -34,6 +34,9 @@
         <a href="{% url 'prestamos:devolucion_registrar' prestamo.pk %}" class="btn btn-forest shadow-sm">
             <i class="bi bi-arrow-return-left me-1"></i> Registrar Devolución
         </a>
+        <a href="{% url 'prestamos:prestamo_reportar_perdida' prestamo.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-exclamation-octagon me-1"></i> Reportar pérdida
+        </a>
         {% endif %}
     </div>
     {% endif %}
@@ -100,6 +103,8 @@
                         <span class="badge-status badge-devuelto">Devuelto</span>
                         {% elif prestamo.estado == 'rechazado' %}
                         <span class="badge-status badge-vencido">Rechazado</span>
+                        {% elif prestamo.estado == 'perdido' %}
+                        <span class="badge-status badge-perdido">Perdido</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -118,13 +123,24 @@
         {% if prestamo.devolucion %}
         <div class="card p-4 shadow-sm h-100" style="background: var(--color-forest-subtle); border-color: #D2DFD2;">
             <div class="d-flex align-items-center gap-2 mb-3">
+                {% if prestamo.estado == 'perdido' %}
+                <i class="bi bi-exclamation-octagon-fill text-danger fs-4"></i>
+                <h5 class="font-serif mb-0 text-danger">Pérdida Registrada</h5>
+                {% else %}
                 <i class="bi bi-check-circle-fill text-success fs-4"></i>
                 <h5 class="font-serif mb-0 text-success">Devolución Registrada</h5>
+                {% endif %}
             </div>
-            <p class="small text-muted mb-3">Este ejemplar ya fue entregado y se encuentra actualmente disponible en sala.</p>
+            <p class="small text-muted mb-3">
+                {% if prestamo.estado == 'perdido' %}
+                El ejemplar fue reportado como perdido y no está en circulación.
+                {% else %}
+                Este ejemplar ya fue entregado. Estado actual del ejemplar: <strong>{{ prestamo.ejemplar.get_estado_display }}</strong>.
+                {% endif %}
+            </p>
             <table class="table table-sm mb-0">
                 <tr>
-                    <th class="fw-normal text-muted">Fecha de Devolución</th>
+                    <th class="fw-normal text-muted">{% if prestamo.estado == 'perdido' %}Fecha del Reporte{% else %}Fecha de Devolución{% endif %}</th>
                     <td class="fw-semibold">{{ prestamo.devolucion.fecha_devolucion|date:"d M Y" }}</td>
                 </tr>
                 <tr>
@@ -171,6 +187,9 @@
             {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
             <a href="{% url 'prestamos:devolucion_registrar' prestamo.pk %}" class="btn btn-forest w-100">
                 <i class="bi bi-arrow-return-left me-1"></i> Registrar Devolución Ahora
+            </a>
+            <a href="{% url 'prestamos:prestamo_reportar_perdida' prestamo.pk %}" class="btn btn-link text-danger w-100 mt-2 small">
+                Reportar pérdida del ejemplar
             </a>
             {% endif %}
         </div>

@@ -51,6 +51,8 @@
                     <ul class="dropdown-menu shadow-sm border-0" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-sm);">
                         <li><a class="dropdown-item py-2" href="{% url 'usuarios:usuario_list' %}"><i class="bi bi-people me-2"></i>Usuarios</a></li>
                         <li><a class="dropdown-item py-2" href="{% url 'prestamos:prestamo_list' %}"><i class="bi bi-arrow-left-right me-2"></i>Préstamos</a></li>
+                        <li><a class="dropdown-item py-2" href="{% url 'catalogos:autor_list' %}"><i class="bi bi-person-lines-fill me-2"></i>Autores</a></li>
+                        <li><a class="dropdown-item py-2" href="{% url 'prestamos:multa_config' %}"><i class="bi bi-cash-coin me-2"></i>Tarifa de multa</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item py-2" href="{% url 'reportes:prestamos_activos' %}"><i class="bi bi-clock me-2"></i>Préstamos Activos</a></li>
                         <li><a class="dropdown-item py-2" href="{% url 'reportes:libros_mas_prestados' %}"><i class="bi bi-bar-chart me-2"></i>Libros más prestados</a></li>

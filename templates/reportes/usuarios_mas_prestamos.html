@@ -8,17 +8,13 @@
         <h1 class="display-6 fw-bold mb-1">Usuarios con Más Préstamos</h1>
         <p class="text-muted mb-0">Ranking de lectores universitarios con mayor actividad en el sistema.</p>
     </div>
-    <div>
-        <a href="{% url 'usuarios:usuario_list' %}" class="btn btn-outline-forest btn-sm">
-            <i class="bi bi-people me-1"></i> Todos los Usuarios
-        </a>
-    </div>
+    {% include 'reportes/_filtro_fechas.html' %}
 </div>
 
 <div class="card shadow-sm mb-5">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0 font-serif">Top 20 Lectores Frecuentes</h5>
-        <span class="small text-muted">Histórico total</span>
+        <span class="small text-muted">{% if desde or hasta %}Período: {% if desde %}{{ desde|date:"d/m/Y" }}{% else %}inicio{% endif %} a {{ hasta|date:"d/m/Y" }}{% else %}Histórico total{% endif %}. Solo préstamos aprobados.</span>
     </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0">
@@ -29,7 +25,11 @@
                     <th>Código Universitario</th>
                     <th>Rol</th>
                     <th>Estado</th>
-                    <th class="text-center" style="width: 170px;">Total Préstamos</th>
+                    <th class="text-center" style="width: 130px;">Total Préstamos</th>
+                    <th class="text-center">Activos</th>
+                    <th class="text-center">Vencidos</th>
+                    <th class="text-center">Devueltos</th>
+                    <th class="text-center">Perdidos</th>
                     <th class="text-end">Historial</th>
                 </tr>
             </thead>
@@ -69,6 +69,10 @@
                             <i class="bi bi-journal-bookmark me-1"></i> {{ u.total_prestamos }}
                         </span>
                     </td>
+                    <td class="align-middle text-center">{{ u.total_activos }}</td>
+                    <td class="align-middle text-center{% if u.total_vencidos %} text-danger fw-bold{% endif %}">{{ u.total_vencidos }}</td>
+                    <td class="align-middle text-center">{{ u.total_devueltos }}</td>
+                    <td class="align-middle text-center{% if u.total_perdidos %} text-danger fw-bold{% endif %}">{{ u.total_perdidos }}</td>
                     <td class="align-middle text-end">
                         <a href="{% url 'usuarios:usuario_detail' u.pk %}" class="btn btn-sm btn-outline-forest">
                             Ver Historial
@@ -77,8 +81,8 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
-                        No hay usuarios registrados con préstamos.
+                    <td colspan="11" class="text-center py-5 text-muted">
+                        No hay usuarios con préstamos en el período seleccionado.
                     </td>
                 </tr>
                 {% endfor %}

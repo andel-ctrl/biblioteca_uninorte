@@ -1,0 +1,15 @@
+<!-- FILTRO POR RANGO DE FECHAS (compartido por los reportes) -->
+<div class="card p-2 px-3 shadow-sm border-0" style="border: 1px solid var(--color-border) !important;">
+    <form method="get" class="d-flex flex-wrap align-items-center gap-2">
+        <label class="small text-muted fw-semibold" for="filtro-desde">Desde</label>
+        <input type="date" id="filtro-desde" name="desde" value="{{ desde|date:'Y-m-d' }}" class="form-control form-control-sm w-auto">
+        <label class="small text-muted fw-semibold" for="filtro-hasta">Hasta</label>
+        <input type="date" id="filtro-hasta" name="hasta" value="{{ hasta|date:'Y-m-d' }}" class="form-control form-control-sm w-auto">
+        <button type="submit" class="btn btn-sm btn-forest">Filtrar</button>
+    </form>
+    <div class="d-flex flex-wrap gap-2 mt-2 small">
+        {% for etiqueta, a_desde, a_hasta in atajos %}
+        <a href="?{% if a_desde %}desde={{ a_desde|date:'Y-m-d' }}&hasta={{ a_hasta|date:'Y-m-d' }}{% endif %}" class="text-decoration-none">{{ etiqueta }}</a>{% if not forloop.last %}<span class="text-muted">|</span>{% endif %}
+        {% endfor %}
+    </div>
+</div>

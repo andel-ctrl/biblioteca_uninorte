@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Count, ProtectedError
 from .models import Libro, Ejemplar, Autor, Categoria
 from .forms import LibroForm, EjemplarForm, AutorForm
 from apps.usuarios.decorators import bibliotecario_required
@@ -81,7 +81,12 @@ def libro_delete(request, pk):
     libro = get_object_or_404(Libro, pk=pk)
     if request.method == 'POST':
         titulo = libro.titulo
-        libro.delete()
+        try:
+            libro.delete()
+        except ProtectedError:
+            # PROTECT en Prestamo.ejemplar impide borrar ejemplares con historial de préstamos
+            messages.error(request, f'No se puede eliminar "{titulo}" porque sus ejemplares tienen préstamos registrados. Esto protege el historial.')
+            return redirect('catalogos:libro_detail', pk=pk)
         messages.success(request, f'Libro "{titulo}" eliminado.')
         return redirect('catalogos:libro_list')
     return render(request, 'catalogos/libro_confirm_delete.html', {'libro': libro})
@@ -124,7 +129,11 @@ def ejemplar_delete(request, pk):
     ejemplar = get_object_or_404(Ejemplar, pk=pk)
     libro_pk = ejemplar.libro.pk
     if request.method == 'POST':
-        ejemplar.delete()
+        try:
+            ejemplar.delete()
+        except ProtectedError:
+            messages.error(request, f'No se puede eliminar el ejemplar {ejemplar.codigo_barras} porque tiene préstamos registrados. Si ya no está en circulación, márquelo como perdido.')
+            return redirect('catalogos:libro_detail', pk=libro_pk)
         messages.success(request, 'Ejemplar eliminado.')
         return redirect('catalogos:libro_detail', pk=libro_pk)
     return render(request, 'catalogos/ejemplar_confirm_delete.html', {'ejemplar': ejemplar})
@@ -134,7 +143,7 @@ def ejemplar_delete(request, pk):
 
 @login_required
 def autor_list(request):
-    autores = Autor.objects.all()
+    autores = Autor.objects.annotate(total_libros=Count('libros'))
     return render(request, 'catalogos/autor_list.html', {'autores': autores})
 
 
