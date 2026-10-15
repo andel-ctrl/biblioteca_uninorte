@@ -1,121 +1,169 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Biblioteca Universitaria{% endblock %}</title>
-    <!-- Google Fonts: Playfair Display + Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <!-- Todo se sirve desde el proyecto (static/vendor): la app no depende de internet -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-uni.svg' %}">
+    <link rel="preload" href="{% static 'vendor/fonts/instrument-sans-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'vendor/fonts/fraunces-latin-opsz-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link href="{% static 'vendor/bootstrap-5.3.3/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/fuentes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    <link rel="stylesheet" href="{% static 'css/componentes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/pantallas.css' %}">
+    <link rel="stylesheet" href="{% static 'css/legado.css' %}">
 </head>
-<body>
+{% with ns=request.resolver_match.namespace vista=request.resolver_match.url_name %}
+<body class="{% if es_bibliotecario %}cuerpo-bib{% else %}cuerpo-lector{% endif %} {% block cuerpo_clase %}{% endblock %}">
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 
-<!-- NAVBAR EDITORIAL -->
-<nav class="navbar navbar-expand-lg navbar-custom sticky-top">
-    <div class="container">
-        <a class="navbar-brand" href="{% url 'home' %}">
-            <span class="brand-badge">B</span>
-            <span>Biblioteca Universitaria</span>
-        </a>
-        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navMain">
-            <ul class="navbar-nav me-auto ms-lg-3">
-                {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'reportes:dashboard' %}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
-                </li>
-                {% endif %}
+{% if es_bibliotecario %}
+<!-- ===================== BIBLIOTECARIO: barra lateral ===================== -->
+<header class="barra-movil">
+    <a class="marca" href="{% url 'home' %}"><span class="marca__placa">{% include 'componentes/_logo.html' %}</span><span class="marca__nombre">Biblioteca</span></a>
+    <button class="boton-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#lateral" aria-controls="lateral">
+        <i class="bi bi-list" aria-hidden="true"></i> Menú
+    </button>
+</header>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'catalogos:libro_list' %}"><i class="bi bi-book me-1"></i>Catálogo</a>
-                </li>
+<aside class="lateral offcanvas-lg offcanvas-start" id="lateral" tabindex="-1" aria-label="Navegación principal">
+    <div class="lateral__interior">
+        <div class="lateral__marca d-flex align-items-start justify-content-between">
+            <a class="marca" href="{% url 'home' %}">
+                <span class="marca__placa">{% include 'componentes/_logo.html' %}</span>
+                <span class="marca__texto"><span class="marca__nombre">Biblioteca</span><span class="marca__sub">Préstamos · Uninorte</span></span>
+            </a>
+            <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#lateral" aria-label="Cerrar menú"></button>
+        </div>
 
-                {% if user.is_authenticated and not user.is_staff and user.perfil.rol != 'bibliotecario' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'usuarios:mi_historial' %}"><i class="bi bi-clock-history me-1"></i>Mis Préstamos</a>
-                </li>
-                {% endif %}
+        <nav>
+            <div class="lateral__grupo">
+                <div class="lateral__titulo">Operación</div>
+                <a class="lateral__enlace" href="{% url 'reportes:dashboard' %}" {% if ns == 'reportes' and vista == 'dashboard' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-grid-1x2" aria-hidden="true"></i> Mesa de trabajo</a>
+                <a class="lateral__enlace" href="{% url 'prestamos:prestamo_list' %}" {% if ns == 'prestamos' and vista != 'multa_config' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Préstamos
+                    {% if nav_pendientes %}<span class="lateral__contador" title="Solicitudes pendientes">{{ nav_pendientes }}</span>{% endif %}</a>
+            </div>
+            <div class="lateral__grupo">
+                <div class="lateral__titulo">Catálogo</div>
+                <a class="lateral__enlace" href="{% url 'catalogos:libro_list' %}" {% if ns == 'catalogos' and vista != 'autor_list' and vista != 'autor_create' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-book" aria-hidden="true"></i> Libros y ejemplares</a>
+                <a class="lateral__enlace" href="{% url 'catalogos:autor_list' %}" {% if vista == 'autor_list' or vista == 'autor_create' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-person-lines-fill" aria-hidden="true"></i> Autores</a>
+            </div>
+            <div class="lateral__grupo">
+                <div class="lateral__titulo">Personas</div>
+                <a class="lateral__enlace" href="{% url 'usuarios:usuario_list' %}" {% if ns == 'usuarios' and vista != 'mi_historial' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-people" aria-hidden="true"></i> Usuarios</a>
+            </div>
+            <div class="lateral__grupo">
+                <div class="lateral__titulo">Reportes</div>
+                <a class="lateral__enlace" href="{% url 'reportes:prestamos_activos' %}" {% if vista == 'prestamos_activos' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-clock-history" aria-hidden="true"></i> Activos y vencidos</a>
+                <a class="lateral__enlace" href="{% url 'reportes:libros_mas_prestados' %}" {% if vista == 'libros_mas_prestados' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-bar-chart-line" aria-hidden="true"></i> Libros más prestados</a>
+                <a class="lateral__enlace" href="{% url 'reportes:usuarios_mas_prestamos' %}" {% if vista == 'usuarios_mas_prestamos' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-award" aria-hidden="true"></i> Lectores más activos</a>
+                <a class="lateral__enlace" href="{% url 'reportes:inventario' %}" {% if vista == 'inventario' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-boxes" aria-hidden="true"></i> Inventario</a>
+            </div>
+            <div class="lateral__grupo">
+                <div class="lateral__titulo">Configuración</div>
+                <a class="lateral__enlace" href="{% url 'prestamos:multa_config' %}" {% if vista == 'multa_config' %}aria-current="page"{% endif %}>
+                    <i class="bi bi-cash-coin" aria-hidden="true"></i> Tarifa de multa</a>
+            </div>
+        </nav>
 
-                {% if user.is_staff or user.perfil.rol == 'bibliotecario' %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-sliders me-1"></i>Gestión
-                    </a>
-                    <ul class="dropdown-menu shadow-sm border-0" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-sm);">
-                        <li><a class="dropdown-item py-2" href="{% url 'usuarios:usuario_list' %}"><i class="bi bi-people me-2"></i>Usuarios</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'prestamos:prestamo_list' %}"><i class="bi bi-arrow-left-right me-2"></i>Préstamos</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'catalogos:autor_list' %}"><i class="bi bi-person-lines-fill me-2"></i>Autores</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'prestamos:multa_config' %}"><i class="bi bi-cash-coin me-2"></i>Tarifa de multa</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'reportes:prestamos_activos' %}"><i class="bi bi-clock me-2"></i>Préstamos Activos</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'reportes:libros_mas_prestados' %}"><i class="bi bi-bar-chart me-2"></i>Libros más prestados</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'reportes:usuarios_mas_prestamos' %}"><i class="bi bi-award me-2"></i>Lectores más activos</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'reportes:inventario' %}"><i class="bi bi-boxes me-2"></i>Inventario</a></li>
-                    </ul>
-                </li>
-                {% endif %}
-            </ul>
-            <ul class="navbar-nav align-items-center gap-2">
-                {% if user.is_authenticated %}
-                <li class="nav-item">
-                    <a class="user-pill text-decoration-none" href="{% url 'usuarios:mi_historial' %}">
-                        <i class="bi bi-person text-muted"></i>
-                        <span>{{ user.get_full_name|default:user.username }}</span>
-                        <span class="user-role-tag">{{ user.perfil.get_rol_display|default:"Usuario" }}</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-muted" href="{% url 'logout' %}" title="Cerrar sesión">
-                        <i class="bi bi-box-arrow-right"></i>
-                    </a>
-                </li>
-                {% else %}
-                <li class="nav-item">
-                    <a class="btn btn-forest btn-sm" href="{% url 'login' %}">Iniciar sesión</a>
-                </li>
-                {% endif %}
-            </ul>
+        <div class="lateral__pie">
+            <div class="lateral__usuario">
+                {% include 'componentes/_iniciales.html' %}
+                <div><strong>{{ user.get_full_name|default:user.username }}</strong>
+                <span>{{ user.perfil.get_rol_display|default:"Administrador" }}</span></div>
+            </div>
+            {% if user.perfil %}
+            <a class="lateral__enlace mb-2" href="{% url 'usuarios:mi_historial' %}" {% if vista == 'mi_historial' %}aria-current="page"{% endif %}>
+                <i class="bi bi-bookmark" aria-hidden="true"></i> Mis préstamos</a>
+            {% endif %}
+            <a class="boton-salir" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión</a>
         </div>
     </div>
-</nav>
+</aside>
 
-<!-- MENSAJES FLOTANTES / ALERTAS -->
-<div class="container mt-3">
-    {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
-        <i class="bi bi-info-circle me-1"></i> {{ msg }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<div class="contenido-bib-envoltura">
+    <main id="contenido" class="contenido-bib">
+
+{% else %}
+<!-- ===================== LECTOR / VISITANTE: barra superior ===================== -->
+{% block barra %}
+<header class="barra" id="barra">
+    <div class="container">
+        <div class="barra__fila">
+            <a class="marca" href="{% url 'home' %}">
+                {% include 'componentes/_logo.html' %}
+                <span class="marca__texto"><span class="marca__nombre">Biblioteca</span><span class="marca__sub">Préstamos · Uninorte</span></span>
+            </a>
+            {% if user.is_authenticated %}
+            <button class="boton-menu barra__menu-movil" type="button" data-alternar-barra aria-expanded="false" aria-controls="barra">
+                <i class="bi bi-list" aria-hidden="true"></i> Menú
+            </button>
+            <nav class="barra__nav" aria-label="Navegación principal">
+                <a class="barra__enlace" href="{% url 'catalogos:libro_list' %}" {% if ns == 'catalogos' %}aria-current="page"{% endif %}><span class="cinta" aria-hidden="true"></span>Catálogo</a>
+                {% if user.perfil %}
+                <a class="barra__enlace" href="{% url 'usuarios:mi_historial' %}" {% if vista == 'mi_historial' or ns == 'prestamos' %}aria-current="page"{% endif %}><span class="cinta" aria-hidden="true"></span>Mis préstamos</a>
+                {% endif %}
+            </nav>
+            <div class="barra__cuenta">
+                <div class="ficha-cuenta">
+                    {% include 'componentes/_iniciales.html' %}
+                    <div class="ficha-cuenta__datos">
+                        <span class="ficha-cuenta__nombre">{{ user.get_full_name|default:user.username }}</span>
+                        <span class="ficha-cuenta__rol">{{ user.perfil.get_rol_display|default:"Usuario" }}</span>
+                    </div>
+                </div>
+                <a class="boton-salir" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir</a>
+            </div>
+            {% else %}
+            <div class="ms-auto">
+                {% if vista != 'login' %}<a class="btn btn-primary btn-sm" href="{% url 'login' %}">Iniciar sesión</a>{% endif %}
+            </div>
+            {% endif %}
+        </div>
     </div>
-    {% endfor %}
+</header>
+{% endblock %}
+
+{% block portada %}{% endblock %}
+<main id="contenido" class="pagina">
+    <div class="container">
+{% endif %}
+
+        {# Contenido único para ambos diseños: Django no permite repetir un bloque #}
+        {% include 'componentes/_avisos.html' %}
+        {% block content %}{% endblock %}
+
+{% if es_bibliotecario %}
+    </main>
+    <footer class="pie"><div class="pie__fila px-3 px-lg-5">
+        <span>Biblioteca Universitaria · Sistema de préstamos</span><span>Bases de Datos · 2026</span>
+    </div></footer>
 </div>
-
-<!-- CONTENIDO PRINCIPAL -->
-<main class="container py-4">
-    {% block content %}{% endblock %}
-</main>
-
-<footer class="footer-editorial text-center">
-    <div class="container">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
-            <div>
-                <span class="font-serif fw-semibold">Biblioteca Universitaria</span>
-                <span class="text-muted ms-2">&mdash; Catálogo & Préstamos</span>
-            </div>
-            <div class="small text-muted">
-                Bases de Datos &copy; 2026
-            </div>
-        </div>
+{% else %}
     </div>
-</footer>
+</main>
+<footer class="pie"><div class="container pie__fila">
+    <span>Biblioteca Universitaria · Sistema de préstamos</span><span>Bases de Datos · 2026</span>
+</div></footer>
+{% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'vendor/bootstrap-5.3.3/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/biblioteca.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
+{% endwith %}
 </html>

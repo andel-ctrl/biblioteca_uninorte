@@ -1,0 +1,181 @@
+/* ==========================================================================
+   ESTRUCTURA Y NAVEGACIÓN
+   - Lector / visitante: barra superior; el ítem activo lleva una cinta
+     marcapáginas que cuelga del borde superior, como la cinta de un libro.
+   - Bibliotecario: barra lateral; el ítem activo lleva la cinta en horizontal.
+     En pantallas pequeñas la lateral es un panel deslizable (offcanvas).
+   ========================================================================== */
+
+/* --- Marca ---------------------------------------------------------------- */
+.marca { display: inline-flex; align-items: center; gap: 0.7rem; text-decoration: none; color: inherit; }
+.marca__logo { width: 46px; height: 46px; flex: none; }
+.marca__texto { display: flex; flex-direction: column; line-height: 1; }
+.marca__nombre {
+    font-family: var(--f-serif); font-size: 1.42rem; font-weight: 560; letter-spacing: -0.02em;
+    color: var(--c-borgona); font-variation-settings: "opsz" 48;
+}
+.marca__sub {
+    font-family: var(--f-mono); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--t-secundario); margin-top: 0.32rem;
+}
+/* Placa color hueso: conserva los colores del ícono sobre fondos oscuros */
+.marca__placa {
+    display: inline-flex; padding: 4px; background: var(--c-hueso); border-radius: var(--r-md);
+    box-shadow: 0 0 0 1px rgba(232, 191, 200, 0.35);
+}
+.marca__placa .marca__logo { width: 38px; height: 38px; }
+
+/* --- Cinta marcapáginas (indicador de sección activa) --------------------- */
+.cinta {
+    position: absolute; width: 12px; height: 24px; background: var(--c-borgona);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%);
+    pointer-events: none;
+}
+
+/* --- Barra superior (lector y visitante) ---------------------------------- */
+.barra {
+    position: sticky; top: 0; z-index: 1030;
+    background: rgba(247, 240, 235, 0.93);
+    backdrop-filter: saturate(1.25) blur(12px); -webkit-backdrop-filter: saturate(1.25) blur(12px);
+    border-bottom: 1px solid var(--borde);
+}
+.barra__fila { display: flex; align-items: center; gap: 2.5rem; min-height: 76px; }
+.barra__nav { display: flex; gap: 0.35rem; align-self: stretch; }
+.barra__enlace {
+    position: relative; display: inline-flex; align-items: center; padding: 0 0.9rem;
+    font-size: 0.97rem; font-weight: 500; color: var(--t-secundario); text-decoration: none;
+    transition: color var(--transicion);
+}
+.barra__enlace .cinta {
+    top: 0; left: 50%; margin-left: -6px; transform: translateY(-100%);
+    transition: transform var(--rebote), background-color var(--transicion);
+}
+.barra__enlace:hover { color: var(--c-tinta); }
+.barra__enlace:hover .cinta { transform: translateY(-55%); background: var(--c-rosa); }
+.barra__enlace[aria-current="page"] { color: var(--c-borgona); }
+.barra__enlace[aria-current="page"] .cinta { transform: translateY(0); background: var(--c-borgona); animation: cinta-cae 520ms var(--rebote) both; }
+@keyframes cinta-cae { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+.barra__cuenta { margin-left: auto; display: flex; align-items: center; gap: 1.1rem; }
+
+/* Ficha de cuenta: iniciales + nombre + rol */
+.ficha-cuenta { display: flex; align-items: center; gap: 0.7rem; }
+.ficha-cuenta__iniciales {
+    width: 38px; height: 38px; display: grid; place-items: center; flex: none;
+    font-family: var(--f-serif); font-size: 1rem; font-weight: 560; color: var(--c-borgona);
+    background: var(--c-rosa-suave); border: 1px solid var(--c-rosa); border-radius: var(--r-md);
+}
+.ficha-cuenta__datos { display: flex; flex-direction: column; line-height: 1.15; }
+.ficha-cuenta__nombre { font-weight: 600; font-size: 0.9rem; color: var(--c-tinta); }
+.ficha-cuenta__rol { font-family: var(--f-mono); font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--t-secundario); }
+
+.boton-salir {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-size: 0.86rem; font-weight: 500; color: var(--t-secundario); text-decoration: none;
+    padding: 0.42rem 0.75rem; border-radius: var(--r-sm); border: 1px solid transparent;
+    transition: color var(--transicion), border-color var(--transicion), background-color var(--transicion);
+}
+.boton-salir:hover { color: var(--c-borgona); border-color: var(--c-rosa); background: var(--c-rosa-suave); }
+
+.barra .barra__menu-movil { display: none; margin-left: auto; }
+
+@media (max-width: 767.98px) {
+    .barra .barra__menu-movil { display: inline-flex; }
+    .barra__fila { flex-wrap: wrap; gap: 0.75rem; min-height: 64px; padding: 0.6rem 0; }
+    .marca__logo { width: 38px; height: 38px; }
+    .marca__nombre { font-size: 1.2rem; }
+    .barra__nav, .barra__cuenta { display: none; width: 100%; margin: 0; }
+    .barra.abierta .barra__nav { display: flex; flex-direction: column; align-self: auto; padding: 0.25rem 0; }
+    .barra.abierta .barra__enlace { padding: 0.65rem 0 0.65rem 1.4rem; }
+    .barra.abierta .barra__enlace .cinta { top: 50%; left: 0; margin: -12px 0 0; transform: none; opacity: 0; }
+    .barra.abierta .barra__enlace[aria-current="page"] .cinta { opacity: 1; animation: none; }
+    .barra.abierta .barra__cuenta { display: flex; justify-content: space-between; padding: 0.85rem 0 0.4rem; border-top: 1px solid var(--borde); }
+}
+
+/* --- Contenedor de página ------------------------------------------------- */
+.pagina { padding: 2.75rem 0 5rem; flex: 1; }
+.cuerpo-lector { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* --- Barra lateral (bibliotecario) ---------------------------------------- */
+.cuerpo-bib { min-height: 100vh; }
+.lateral {
+    --bs-offcanvas-width: var(--ancho-lateral);
+    --bs-offcanvas-bg: var(--c-tinta);
+    --bs-offcanvas-color: var(--t-sobre-oscuro-suave);
+}
+/* El fondo va en el interior: Bootstrap fuerza fondo transparente en offcanvas-lg en escritorio */
+.lateral__interior {
+    background: var(--c-tinta); color: var(--t-sobre-oscuro-suave);
+    display: flex; flex-direction: column; height: 100%; padding: 1.4rem 0 1.25rem; overflow-y: auto;
+}
+.lateral .marca__nombre { color: var(--t-sobre-oscuro); }
+.lateral .marca__sub { color: var(--c-rosa); }
+.lateral__marca { padding: 0 1.25rem 1.3rem; margin-bottom: 0.4rem; border-bottom: 1px solid rgba(232, 191, 200, 0.16); }
+
+.lateral__grupo { margin-top: 1.2rem; }
+.lateral__titulo {
+    font-family: var(--f-mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--c-dorado); padding: 0 1.25rem; margin-bottom: 0.3rem;
+}
+.lateral__enlace {
+    position: relative; display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.52rem 1.25rem 0.52rem 1.55rem;
+    color: var(--t-sobre-oscuro-suave); text-decoration: none; font-size: 0.93rem; font-weight: 450;
+    transition: background-color var(--transicion), color var(--transicion), padding-left var(--transicion);
+}
+.lateral__enlace .bi { font-size: 1rem; opacity: 0.8; }
+.lateral__enlace:hover { color: var(--t-sobre-oscuro); background: rgba(255, 255, 255, 0.04); padding-left: 1.75rem; }
+/* Cinta horizontal en el ítem activo */
+.lateral__enlace::before {
+    content: ""; position: absolute; left: 0; top: 50%; width: 18px; height: 11px; margin-top: -5.5px;
+    background: var(--c-rosa); clip-path: polygon(0 0, 100% 0, 74% 50%, 100% 100%, 0 100%);
+    transform: translateX(-100%); transition: transform var(--rebote);
+}
+.lateral__enlace[aria-current="page"] { color: var(--t-sobre-oscuro); background: var(--c-tinta-suave); font-weight: 600; }
+.lateral__enlace[aria-current="page"]::before { transform: translateX(0); }
+.lateral__contador {
+    margin-left: auto; font-family: var(--f-mono); font-size: 0.7rem; font-weight: 500;
+    background: var(--c-rosa); color: var(--c-tinta); padding: 0.1rem 0.42rem; border-radius: var(--r-sm);
+}
+
+.lateral__pie { margin-top: auto; padding: 1.25rem 1.25rem 0; border-top: 1px solid rgba(232, 191, 200, 0.16); }
+.lateral__usuario { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
+.lateral__usuario .ficha-cuenta__iniciales { background: var(--c-tinta-suave); border-color: rgba(232, 191, 200, 0.4); color: var(--c-rosa); }
+.lateral__usuario strong { display: block; color: var(--t-sobre-oscuro); font-weight: 600; font-size: 0.88rem; line-height: 1.2; }
+.lateral__usuario span { font-family: var(--f-mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-rosa); }
+.lateral__pie .lateral__enlace { padding-left: 0.3rem; margin-bottom: 0.4rem; }
+.lateral__pie .lateral__enlace:not([aria-current])::before { display: none; }
+.lateral__pie .lateral__enlace:hover { padding-left: 0.5rem; }
+.lateral .boton-salir { width: 100%; justify-content: center; color: var(--t-sobre-oscuro-suave); border-color: rgba(232, 191, 200, 0.28); }
+.lateral .boton-salir:hover { color: var(--t-sobre-oscuro); border-color: var(--c-rosa); background: transparent; }
+
+.contenido-bib { padding: 2.5rem clamp(1rem, 3.5vw, 3.5rem) 4.5rem; max-width: 1380px; }
+
+@media (min-width: 992px) {
+    .lateral { position: fixed; inset: 0 auto 0 0; width: var(--ancho-lateral); z-index: 1020; }
+    .contenido-bib-envoltura { margin-left: var(--ancho-lateral); display: flex; flex-direction: column; min-height: 100vh; }
+}
+
+/* Barra compacta del bibliotecario en móvil y tableta */
+.barra-movil {
+    position: sticky; top: 0; z-index: 1030; display: flex; align-items: center; justify-content: space-between;
+    padding: 0.65rem 1rem; background: var(--c-tinta); color: var(--t-sobre-oscuro);
+}
+.barra-movil .marca__nombre { color: var(--t-sobre-oscuro); font-size: 1.2rem; }
+.barra-movil .marca__placa .marca__logo { width: 32px; height: 32px; }
+.boton-menu {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: transparent; border: 1px solid rgba(232, 191, 200, 0.4); color: var(--t-sobre-oscuro);
+    padding: 0.38rem 0.75rem; border-radius: var(--r-sm); font-size: 0.86rem; font-weight: 500;
+}
+.barra .boton-menu { color: var(--c-tinta); border-color: var(--borde-fuerte); }
+@media (min-width: 992px) { .barra-movil { display: none; } }
+
+/* --- Pie ------------------------------------------------------------------ */
+.pie {
+    margin-top: auto; padding: 1.4rem 0; border-top: 1px solid var(--borde);
+    font-family: var(--f-mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--t-secundario);
+}
+.pie__fila { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; }
+.pie a { color: inherit; }

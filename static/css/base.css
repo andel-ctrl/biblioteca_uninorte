@@ -1,0 +1,60 @@
+/* ==========================================================================
+   BASE: tipografía, enlaces, foco, selección y movimiento reducido
+   ========================================================================== */
+body {
+    background: var(--c-hueso);
+    color: var(--t-principal);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, .serif {
+    font-family: var(--f-serif);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    color: var(--c-tinta);
+    text-wrap: balance;
+}
+h5, h6 { font-family: var(--f-sans); font-weight: 600; color: var(--c-tinta); }
+
+.mono, code, kbd, .font-monospace {
+    font-family: var(--f-mono) !important;
+    font-size: 0.86em;
+    letter-spacing: 0;
+}
+code { color: var(--c-borgona); }
+
+/* Cifras alineadas en tablas y datos */
+.cifra { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+a { text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+
+::selection { background: var(--c-rosa); color: var(--c-tinta); }
+
+/* Foco visible y consistente para navegación con teclado */
+:focus-visible {
+    outline: var(--foco-contorno);
+    outline-offset: 2px;
+}
+.btn:focus-visible, .form-control:focus, .form-select:focus, .form-check-input:focus {
+    box-shadow: var(--foco);
+}
+
+/* Enlace "saltar al contenido" para lectores de pantalla y teclado */
+.saltar {
+    position: absolute; left: 1rem; top: -3rem; z-index: 2000;
+    background: var(--c-tinta); color: var(--t-sobre-oscuro);
+    padding: 0.5rem 0.9rem; border-radius: var(--r-sm); transition: top var(--transicion);
+}
+.saltar:focus { top: 1rem; color: var(--t-sobre-oscuro); }
+
+/* Movimiento reducido: la app funciona igual, sin animaciones */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

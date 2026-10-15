@@ -1,0 +1,87 @@
+/* ==========================================================================
+   PANTALLAS ESPECÍFICAS
+   acceso (login) · inicio del lector · mis préstamos · mesa de trabajo
+   ========================================================================== */
+
+/* --- Campo con ícono (login y búsqueda) ----------------------------------- */
+.campo-icono__caja { position: relative; }
+.campo-icono__caja > .bi { position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%); color: var(--t-secundario); pointer-events: none; transition: color var(--transicion); }
+.campo-icono__caja .form-control { padding-left: 2.65rem; min-height: 50px; font-size: 1rem; }
+.campo-icono__caja:focus-within > .bi { color: var(--c-borgona); }
+.campo-icono__ver {
+    position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+    width: 38px; height: 38px; display: grid; place-items: center; border: 0; background: transparent;
+    color: var(--t-secundario); border-radius: var(--r-sm);
+}
+.campo-icono__ver:hover { color: var(--c-borgona); background: var(--c-rosa-suave); }
+.campo-icono__caja:has(.campo-icono__ver) .form-control { padding-right: 3rem; }
+
+/* ==========================================================================
+   ACCESO (LOGIN)
+   Composición asimétrica: fotografía con lema editorial a la izquierda y el
+   panel del formulario montado sobre el borde de la foto, con su cinta.
+   ========================================================================== */
+.cuerpo-acceso .pagina { padding: 0; }
+.cuerpo-acceso .pagina > .container { max-width: none; padding: 0; }
+.cuerpo-acceso .pie { display: none; }
+.cuerpo-acceso .avisos { position: absolute; top: 1rem; right: 1rem; z-index: 5; max-width: 420px; }
+
+.acceso { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); min-height: 100vh; }
+
+.acceso__visual { position: relative; overflow: hidden; background: var(--c-tinta); color: var(--t-sobre-oscuro); isolation: isolate; }
+.acceso__foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transform: scale(1.06); animation: foto-respira 14s ease-out both; }
+.acceso__visual::before { /* velo de tinta y borgoña para asegurar el contraste del texto */
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(160deg, rgba(32, 42, 68, 0.55) 0%, rgba(32, 42, 68, 0.82) 55%, rgba(89, 28, 50, 0.9) 100%);
+}
+@keyframes foto-respira { from { transform: scale(1.12); } to { transform: scale(1.04); } }
+
+/* Arco y estrella del ícono, trazados una sola vez al cargar */
+.acceso__arco { position: absolute; right: -8%; top: 4%; width: 62%; z-index: -1; opacity: 0.55; }
+.acceso__arco path { fill: none; stroke: var(--c-dorado); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 520; stroke-dashoffset: 520; animation: arco-traza 1600ms cubic-bezier(0.6, 0, 0.2, 1) 300ms forwards; }
+.acceso__arco .acceso__arco-estrella { fill: var(--c-dorado); stroke: none; stroke-dasharray: none; animation: estrella-aparece 900ms var(--rebote) 1500ms backwards; transform-box: fill-box; transform-origin: center; }
+@keyframes arco-traza { to { stroke-dashoffset: 0; } }
+
+.acceso__texto { position: absolute; left: clamp(2rem, 6vw, 5.5rem); bottom: clamp(3rem, 10vh, 7rem); right: 30%; }
+.acceso__logo { margin-bottom: 2rem; }
+.acceso__logo .marca__logo { width: 64px; height: 64px; }
+.acceso__signatura { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--c-rosa); margin: 0 0 1rem; }
+.acceso__lema {
+    font-size: clamp(3rem, 1.6rem + 4.6vw, 6.4rem); line-height: 0.92; margin: 0;
+    color: var(--c-hueso); font-weight: 340; letter-spacing: -0.045em; font-optical-sizing: auto;
+}
+.acceso__lema em { font-style: italic; color: var(--c-rosa); font-weight: 300; }
+.acceso__bajada { margin: 1.4rem 0 0; color: var(--t-sobre-oscuro-suave); font-size: 1.05rem; max-width: 34ch; }
+.acceso__credito { position: absolute; left: clamp(2rem, 6vw, 5.5rem); bottom: 1.2rem; margin: 0; font-family: var(--f-mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(247, 240, 235, 0.6); }
+
+/* Panel del formulario: se monta sobre el borde de la fotografía */
+.acceso__panel {
+    position: relative; align-self: center; z-index: 2;
+    margin-left: -5rem; margin-right: clamp(1.5rem, 6vw, 6rem); max-width: 470px; width: calc(100% + 5rem);
+    padding: 3rem clamp(1.75rem, 3vw, 2.75rem) 2.25rem;
+    background: var(--c-papel); border: 1px solid var(--borde);
+    box-shadow: 0 30px 60px -30px rgba(32, 42, 68, 0.45);
+    animation: panel-entra 700ms var(--transicion) 150ms both;
+}
+@keyframes panel-entra { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.acceso__cinta { top: -1px; right: 2.5rem; width: 16px; height: 46px; animation: cinta-cae 700ms var(--rebote) 500ms both; }
+.acceso__titulo { font-size: clamp(2.3rem, 1.6rem + 2vw, 3.1rem); line-height: 1; margin: 0 0 0.6rem; font-weight: 400; letter-spacing: -0.035em; }
+.acceso__titulo em { font-style: italic; color: var(--c-borgona); font-weight: 360; }
+.acceso__ayuda { color: var(--t-secundario); margin: 0 0 1.75rem; }
+.acceso__form { display: grid; gap: 1.1rem; margin-top: 0.5rem; }
+.acceso__form .btn { margin-top: 0.6rem; }
+.acceso__panel .aviso { margin-bottom: 1rem; animation: aviso-entra 280ms var(--transicion) both; }
+.acceso__nota { display: flex; gap: 0.55rem; margin: 1.75rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--borde); font-size: 0.85rem; color: var(--t-secundario); }
+.acceso__nota .bi { color: var(--c-borgona); margin-top: 0.15rem; }
+
+@media (max-width: 991.98px) {
+    .acceso { grid-template-columns: 1fr; min-height: 0; }
+    .acceso__visual { min-height: clamp(300px, 46vh, 440px); }
+    .acceso__texto { right: 2rem; bottom: 4.5rem; }
+    .acceso__lema { font-size: clamp(2.6rem, 1.8rem + 4vw, 4rem); }
+    .acceso__bajada { display: none; }
+    .acceso__logo { margin-bottom: 1.2rem; }
+    .acceso__logo .marca__logo { width: 48px; height: 48px; }
+    .acceso__panel { align-self: start; margin: -3rem auto 2.5rem; width: calc(100% - 2rem); max-width: 520px; padding: 2.5rem 1.5rem 2rem; }
+    .acceso__credito { bottom: auto; top: 1rem; }
+}

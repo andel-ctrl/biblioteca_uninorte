@@ -1,107 +1,90 @@
 {% extends 'base.html' %}
-{% block title %}Gestión de Préstamos — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Préstamos — Biblioteca{% endblock %}
 {% block content %}
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Administración</span>
-        <h1 class="display-6 fw-bold mb-1">Gestión de Préstamos</h1>
-        <p class="text-muted mb-0">Revisa solicitudes pendientes, aprueba préstamos y procesa devoluciones con cálculo de mora.</p>
+        <p class="encabezado__ref"><span class="signatura">CIR</span> Circulación</p>
+        <h1 class="encabezado__titulo">Préstamos</h1>
+        <p class="encabezado__bajada">Aprueba o rechaza solicitudes, registra devoluciones y revisa el estado de cada préstamo.</p>
     </div>
-</div>
+</header>
+{% include 'componentes/_colofon.html' with n=prestamos|length etiqueta='préstamos en esta vista' %}
 
-<!-- FILTRO POR ESTADO -->
-<div class="card p-3 shadow-sm mb-4">
-    <form method="get" class="d-flex flex-wrap align-items-center gap-2">
-        <label class="small fw-semibold text-muted text-uppercase tracking-wider me-1">Filtrar por estado:</label>
-        <select name="estado" class="form-select w-auto">
-            <option value="">Todos los préstamos</option>
-            {% for val, label in estados %}
-            <option value="{{ val }}" {% if estado_filtro == val %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-outline-forest btn-sm px-3">
-            <i class="bi bi-funnel me-1"></i> Aplicar
-        </button>
-        {% if estado_filtro %}
-        <a href="{% url 'prestamos:prestamo_list' %}" class="btn btn-sm btn-link text-muted text-decoration-none">
-            Limpiar filtro
-        </a>
-        {% endif %}
-    </form>
-</div>
+<!-- Filtro por estado: pestañas en pantallas medianas y grandes -->
+<nav class="pestanas d-none d-md-flex" aria-label="Filtrar préstamos por estado">
+    <a class="pestana" href="{% url 'prestamos:prestamo_list' %}" {% if not estado_filtro %}aria-current="true"{% endif %}>Todos</a>
+    {% for val, label in estados %}
+    <a class="pestana" href="?estado={{ val }}" {% if estado_filtro == val %}aria-current="true"{% endif %}>
+        {{ label }}{% if val == 'pendiente' and nav_pendientes %} <span class="pestana__n">{{ nav_pendientes }}</span>{% endif %}
+    </a>
+    {% endfor %}
+</nav>
 
-<div class="card shadow-sm mb-5">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Usuario</th>
-                    <th>Obra / Ejemplar</th>
-                    <th>Solicitud</th>
-                    <th>Vencimiento</th>
-                    <th>Estado</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in prestamos %}
-                <tr>
-                    <td class="text-muted small">#{{ p.id }}</td>
-                    <td class="fw-medium">{{ p.usuario.get_nombre_completo }}</td>
-                    <td>
-                        <div class="font-serif fw-semibold">{{ p.ejemplar.libro.titulo|truncatechars:35 }}</div>
-                        <small class="text-muted font-monospace">{{ p.ejemplar.codigo_barras }}</small>
-                    </td>
-                    <td class="text-muted small">{{ p.fecha_solicitud|date:"d M Y" }}</td>
-                    <td class="small">
-                        {% if p.fecha_vencimiento %}
-                        <span class="{% if p.estado == 'vencido' %}text-danger fw-bold{% endif %}">
-                            {{ p.fecha_vencimiento|date:"d M Y" }}
-                        </span>
-                        {% else %}
-                        <span class="text-muted">&mdash;</span>
-                        {% endif %}
-                    </td>
-                    <td>
+<!-- Filtro por estado: selector en celular (mismo parámetro "estado") -->
+<form method="get" class="d-flex gap-2 mb-3 d-md-none">
+    <label class="visually-hidden" for="filtro-estado">Estado</label>
+    <select id="filtro-estado" name="estado" class="form-select">
+        <option value="">Todos los préstamos</option>
+        {% for val, label in estados %}
+        <option value="{{ val }}" {% if estado_filtro == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-secondary">Filtrar</button>
+</form>
+
+{% if prestamos %}
+<div class="tabla-marco">
+    <table class="table tabla tabla--apilada table-hover">
+        <thead>
+            <tr>
+                <th scope="col">N.º</th>
+                <th scope="col">Lector</th>
+                <th scope="col">Obra y ejemplar</th>
+                <th scope="col">Solicitud</th>
+                <th scope="col">Vence</th>
+                <th scope="col">Estado</th>
+                <th scope="col" class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in prestamos %}
+            <tr>
+                <td data-label="N.º" class="cifra">{{ p.id|stringformat:"04d" }}</td>
+                <td data-label="Lector">
+                    <div>{{ p.usuario.get_nombre_completo }}<span class="tabla__meta mono">{{ p.usuario.codigo_universitario }}</span></div>
+                </td>
+                <td data-label="Obra" class="col-ancha">
+                    <div><span class="tabla__titulo">{{ p.ejemplar.libro.titulo|truncatechars:48 }}</span><span class="tabla__meta mono">{{ p.ejemplar.codigo_barras }}</span></div>
+                </td>
+                <td data-label="Solicitud" class="cifra">{{ p.fecha_solicitud|date:"d/m/Y" }}</td>
+                <td data-label="Vence" class="cifra {% if p.estado == 'vencido' %}text-danger fw-semibold{% endif %}">
+                    {% if p.fecha_vencimiento %}{{ p.fecha_vencimiento|date:"d/m/Y" }}{% else %}<span class="text-body-secondary">—</span>{% endif %}
+                </td>
+                <td data-label="Estado">{% estado p.estado 'prestamo' %}</td>
+                <td data-label="">
+                    <div class="acciones">
                         {% if p.estado == 'pendiente' %}
-                        <span class="badge-status badge-prestado">Pendiente</span>
-                        {% elif p.estado == 'activo' %}
-                        <span class="badge-status badge-disponible">Activo</span>
-                        {% elif p.estado == 'vencido' %}
-                        <span class="badge-status badge-vencido">Vencido</span>
-                        {% elif p.estado == 'devuelto' %}
-                        <span class="badge-status badge-devuelto">Devuelto</span>
-                        {% elif p.estado == 'rechazado' %}
-                        <span class="badge-status badge-vencido">Rechazado</span>
-                        {% elif p.estado == 'perdido' %}
-                        <span class="badge-status badge-perdido">Perdido</span>
+                        <a href="{% url 'prestamos:prestamo_aprobar' p.pk %}" class="accion accion--principal"><i class="bi bi-check2" aria-hidden="true"></i> Aprobar</a>
+                        <a href="{% url 'prestamos:prestamo_rechazar' p.pk %}" class="accion accion--peligro"><i class="bi bi-x" aria-hidden="true"></i> Rechazar</a>
+                        {% elif p.estado == 'activo' or p.estado == 'vencido' %}
+                        <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="accion accion--principal"><i class="bi bi-arrow-return-left" aria-hidden="true"></i> Devolver</a>
                         {% endif %}
-                    </td>
-                    <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="btn btn-outline-secondary">Ver</a>
-                            {% if p.estado == 'pendiente' %}
-                            <a href="{% url 'prestamos:prestamo_aprobar' p.pk %}" class="btn btn-forest">Aprobar</a>
-                            <a href="{% url 'prestamos:prestamo_rechazar' p.pk %}" class="btn btn-outline-danger">Rechazar</a>
-                            {% endif %}
-                            {% if p.estado in 'activo,vencido' %}
-                            <a href="{% url 'prestamos:devolucion_registrar' p.pk %}" class="btn btn-outline-primary">Devolver</a>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
-                        No hay registros de préstamos con el filtro seleccionado.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                        <a href="{% url 'prestamos:prestamo_detail' p.pk %}" class="accion">Ver detalle</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>Sin préstamos {% if estado_filtro %}en este estado{% endif %}</h2>
+    <p>{% if estado_filtro %}No hay préstamos con el estado seleccionado.{% else %}Todavía no se han registrado solicitudes de préstamo.{% endif %}</p>
+</div>
+{% endif %}
 
 {% endblock %}

@@ -1,0 +1,14 @@
+{% if messages %}
+<div class="avisos" role="status" aria-live="polite">
+    {% for msg in messages %}
+    <div class="aviso aviso--{{ msg.level_tag|default:'info' }}">
+        {% if msg.level_tag == 'success' %}<i class="bi bi-check2-circle" aria-hidden="true"></i>
+        {% elif msg.level_tag == 'error' %}<i class="bi bi-x-octagon" aria-hidden="true"></i>
+        {% elif msg.level_tag == 'warning' %}<i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        {% else %}<i class="bi bi-info-circle" aria-hidden="true"></i>{% endif %}
+        <div class="aviso__texto">{{ msg }}</div>
+        <button type="button" class="aviso__cerrar" data-cerrar-aviso aria-label="Cerrar aviso"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

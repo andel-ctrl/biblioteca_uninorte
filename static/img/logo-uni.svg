@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="120 90 1016 1000" role="img" aria-label="Biblioteca UNI" focusable="false">
+    <g style="--t: var(--logo-tinta, #202A44);">
+        <!-- Arco y estrella -->
+        <path d="M262 478 A372 372 0 0 1 572 202" fill="none" stroke="#C5A56A" stroke-width="10" stroke-linecap="round"/>
+        <path d="M684 202 A372 372 0 0 1 994 478" fill="none" stroke="#C5A56A" stroke-width="10" stroke-linecap="round"/>
+        <path d="M628 106 C633 150 641 166 690 172 C641 178 633 195 628 236 C623 195 615 178 566 172 C615 166 623 150 628 106 Z" fill="#C5A56A"/>
+
+        <!-- Lomos (izquierda y espejo) -->
+        <g>
+            <path d="M140 668 Q140 660 156 660 Q172 660 172 668 L172 880 L140 918 Z" fill="#E8BFC8"/>
+            <path d="M140 790 L172 784 M140 804 L172 798" stroke="#C5A56A" stroke-width="5"/>
+            <path d="M186 560 Q186 546 218 546 Q250 546 250 560 L250 800 L186 870 Z" fill="var(--t)"/>
+            <path d="M186 600 Q218 586 250 592 M186 620 Q218 606 250 612" fill="none" stroke="#C5A56A" stroke-width="7"/>
+            <path d="M264 472 Q264 458 296 458 Q328 458 328 472 L328 786 L264 800 Z" fill="#591C32"/>
+            <path d="M264 545 Q296 528 328 534 M264 568 Q296 551 328 557" fill="none" stroke="#C5A56A" stroke-width="7"/>
+        </g>
+        <g transform="translate(1256 0) scale(-1 1)">
+            <path d="M140 668 Q140 660 156 660 Q172 660 172 668 L172 880 L140 918 Z" fill="#E8BFC8"/>
+            <path d="M140 790 L172 784 M140 804 L172 798" stroke="#C5A56A" stroke-width="5"/>
+            <path d="M186 560 Q186 546 218 546 Q250 546 250 560 L250 800 L186 870 Z" fill="var(--t)"/>
+            <path d="M186 600 Q218 586 250 592 M186 620 Q218 606 250 612" fill="none" stroke="#C5A56A" stroke-width="7"/>
+            <path d="M264 472 Q264 458 296 458 Q328 458 328 472 L328 786 L264 800 Z" fill="#591C32"/>
+            <path d="M264 545 Q296 528 328 534 M264 568 Q296 551 328 557" fill="none" stroke="#C5A56A" stroke-width="7"/>
+        </g>
+
+        <!-- Cumbre central y cubierta superior -->
+        <path d="M612 250 L612 446 L350 500 L350 470 L540 424 Z" fill="var(--t)"/>
+        <path d="M644 250 L716 418 L644 432 Z" fill="#591C32"/>
+        <path d="M644 446 L904 470 L904 500 L644 462 Z" fill="var(--t)"/>
+
+        <!-- Letras U y N -->
+        <path d="M350 512 L440 498 L440 690 Q440 744 478 744 Q516 744 516 690 L516 484 L600 472 L600 690 Q600 812 478 812 Q350 812 350 690 Z" fill="#591C32"/>
+        <path d="M656 474 L706 480 L818 666 L818 498 L904 512 L904 800 L818 814 L706 626 L706 834 L656 842 Z" fill="#591C32"/>
+
+        <!-- Libro abierto (izquierda y espejo) -->
+        <g>
+            <path d="M262 798 C420 804 560 838 616 894 L614 932 C540 874 400 854 230 852 Z" fill="var(--t)"/>
+            <path d="M204 878 C380 872 540 900 612 948 L610 964 C520 918 380 904 190 904 Z" fill="#E8BFC8"/>
+            <path d="M184 914 C380 910 540 936 610 980 L606 998 C520 960 380 948 150 978 Z" fill="#591C32"/>
+            <path d="M136 986 C330 980 512 1002 584 1022 C604 1030 616 1044 628 1054 L628 1084 C610 1082 598 1070 578 1062 C500 1038 320 1016 136 1008 Z" fill="var(--t)"/>
+        </g>
+        <g transform="translate(1256 0) scale(-1 1)">
+            <path d="M262 798 C420 804 560 838 616 894 L614 932 C540 874 400 854 230 852 Z" fill="var(--t)"/>
+            <path d="M204 878 C380 872 540 900 612 948 L610 964 C520 918 380 904 190 904 Z" fill="#E8BFC8"/>
+            <path d="M184 914 C380 910 540 936 610 980 L606 998 C520 960 380 948 150 978 Z" fill="#591C32"/>
+            <path d="M136 986 C330 980 512 1002 584 1022 C604 1030 616 1044 628 1054 L628 1084 C610 1082 598 1070 578 1062 C500 1038 320 1016 136 1008 Z" fill="var(--t)"/>
+        </g>
+    </g>
+</svg>

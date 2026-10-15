@@ -1,0 +1,26 @@
+/* ==========================================================================
+   FUENTES (servidas desde static/vendor/fonts, licencia OFL-1.1)
+   Fraunces (variable: peso + tamaño óptico): títulos, fichas, cifras destacadas
+   Instrument Sans (variable: peso): interfaz, formularios, tablas, botones
+   IBM Plex Mono: códigos de barras, ISBN, fechas, signaturas
+   font-display: swap muestra el texto de inmediato mientras la fuente carga
+   ========================================================================== */
+@font-face {
+    font-family: 'Fraunces'; font-style: normal; font-weight: 100 900; font-display: swap;
+    src: url('../vendor/fonts/fraunces-latin-opsz-normal.woff2') format('woff2-variations'),
+         url('../vendor/fonts/fraunces-latin-opsz-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Fraunces'; font-style: italic; font-weight: 100 900; font-display: swap;
+    src: url('../vendor/fonts/fraunces-latin-opsz-italic.woff2') format('woff2-variations'),
+         url('../vendor/fonts/fraunces-latin-opsz-italic.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Instrument Sans'; font-style: normal; font-weight: 400 700; font-display: swap;
+    src: url('../vendor/fonts/instrument-sans-latin-wght-normal.woff2') format('woff2-variations'),
+         url('../vendor/fonts/instrument-sans-latin-wght-normal.woff2') format('woff2');
+}
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url('../vendor/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap;
+    src: url('../vendor/fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2'); }

@@ -1,0 +1,74 @@
+/* ==========================================================================
+   CAPA DE COMPATIBILIDAD (temporal)
+   Traduce las clases y variables del diseño anterior a la nueva paleta para
+   que las pantallas aún no rediseñadas se vean coherentes.
+   Se elimina cuando todas las plantillas usen los componentes nuevos.
+   ========================================================================== */
+:root {
+    --color-terracotta: var(--c-borgona);
+    --color-forest: var(--c-tinta);
+    --color-forest-subtle: var(--e-verde-fondo);
+    --color-clay: var(--e-alerta);
+    --color-amber: var(--e-dorado);
+    --color-border: var(--borde);
+    --color-border-subtle: var(--borde);
+    --color-surface: var(--c-papel);
+    --color-surface-soft: var(--c-hueso-oscuro);
+    --color-text-secondary: var(--t-secundario);
+    --radius-sm: var(--r-sm);
+}
+
+.font-serif { font-family: var(--f-serif) !important; }
+.tracking-wider { letter-spacing: 0.1em; }
+.display-6 { font-family: var(--f-serif); font-weight: 500; letter-spacing: -0.02em; }
+
+/* Tarjetas de Bootstrap: superficie de papel, sin sombras genéricas */
+.card {
+    --bs-card-bg: var(--c-papel);
+    --bs-card-border-color: var(--borde);
+    --bs-card-border-radius: var(--r-md);
+    --bs-card-cap-bg: transparent;
+    box-shadow: none !important;
+}
+.card-header { font-weight: 500; border-bottom-color: var(--borde); }
+.card-header.bg-white, .bg-white { background-color: var(--c-papel) !important; }
+.table { --bs-table-bg: transparent; --bs-table-hover-bg: var(--c-hueso-oscuro); }
+.table > thead th {
+    font-family: var(--f-mono); font-size: 0.68rem; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--t-secundario); border-bottom: 1px solid var(--c-tinta);
+}
+.table-light { --bs-table-bg: var(--c-hueso-oscuro); }
+
+/* Botones del diseño anterior */
+.btn-forest { --bs-btn-bg: var(--c-borgona); --bs-btn-border-color: var(--c-borgona); --bs-btn-color: var(--c-hueso);
+    --bs-btn-hover-bg: var(--c-borgona-oscuro); --bs-btn-hover-border-color: var(--c-borgona-oscuro); --bs-btn-hover-color: var(--c-hueso);
+    --bs-btn-active-bg: var(--c-borgona-oscuro); --bs-btn-active-color: var(--c-hueso); }
+.btn-outline-forest { --bs-btn-bg: transparent; --bs-btn-color: var(--c-tinta); --bs-btn-border-color: var(--borde-fuerte);
+    --bs-btn-hover-bg: var(--c-tinta); --bs-btn-hover-color: var(--c-hueso); --bs-btn-hover-border-color: var(--c-tinta);
+    --bs-btn-active-bg: var(--c-tinta); --bs-btn-active-color: var(--c-hueso); }
+
+/* Etiquetas de estado anteriores -> mismos tonos del sistema nuevo */
+.badge-status {
+    display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; font-weight: 500;
+    padding: 0.32rem 0.55rem; border-radius: var(--r-sm); border-left: 3px solid currentColor; line-height: 1;
+}
+.badge-disponible { color: var(--e-verde); background: var(--e-verde-fondo); }
+.badge-prestado { color: var(--e-dorado); background: var(--e-dorado-fondo); }
+.badge-vencido { color: var(--e-alerta); background: var(--e-alerta-fondo); }
+.badge-perdido { color: var(--e-grafito); background: var(--e-grafito-fondo); border-left-color: var(--c-rosa); }
+.badge-devuelto { color: var(--e-piedra); background: var(--e-piedra-fondo); }
+
+/* Indicadores del dashboard anterior */
+.kpi-card { background: var(--c-papel); border: 1px solid var(--borde); border-radius: var(--r-md); padding: 1.25rem; height: 100%; }
+.kpi-number { font-family: var(--f-mono); font-size: 2rem; font-weight: 500; color: var(--c-tinta); line-height: 1.1; }
+.kpi-label { font-family: var(--f-mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--t-secundario); }
+.kpi-icon-wrap { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-sm); }
+.kpi-icon-forest { background: var(--e-verde-fondo); color: var(--e-verde); }
+.kpi-icon-terracotta { background: var(--c-rosa-suave); color: var(--c-borgona); }
+.kpi-icon-amber { background: var(--e-dorado-fondo); color: var(--e-dorado); }
+.kpi-icon-clay { background: var(--e-alerta-fondo); color: var(--e-alerta); }
+
+.brand-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-sm); font-family: var(--f-mono); }
+.user-role-tag { font-family: var(--f-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--t-secundario); }
+.filter-card { background: var(--c-papel); border: 1px solid var(--borde); border-radius: var(--r-md); padding: 1rem; }
+.alert { border-radius: var(--r-sm); border-width: 0 0 0 3px; }

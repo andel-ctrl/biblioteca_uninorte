@@ -1,0 +1,10 @@
+{% comment %} Separador editorial bajo el encabezado: estrella del ícono + filete doble + dato real de la página.
+   Uso: {% include 'componentes/_colofon.html' with n=libros|length etiqueta="títulos" %}
+        {% include 'componentes/_colofon.html' with dato="Texto libre" %} {% endcomment %}
+<div class="colofon">
+    <svg class="colofon__estrella" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z" fill="currentColor"/>
+    </svg>
+    <span class="colofon__linea"></span>
+    {% if etiqueta %}<span class="colofon__dato"><strong>{{ n }}</strong> {{ etiqueta }}</span>{% elif dato %}<span class="colofon__dato">{{ dato }}</span>{% endif %}
+</div>

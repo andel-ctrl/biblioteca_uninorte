@@ -1,0 +1,93 @@
+/* ==========================================================================
+   TOKENS DEL SISTEMA VISUAL — "El archivo vivo"
+   Todas las decisiones de color, tipografía y forma salen de aquí.
+   Contrastes verificados (WCAG): ver docs o comentarios junto a cada par.
+   ========================================================================== */
+:root {
+    /* --- Paleta de marca --------------------------------------------------- */
+    --c-borgona: #591C32;          /* identidad, acciones principales (11.4:1 sobre hueso) */
+    --c-borgona-oscuro: #43142A;   /* hover de acciones */
+    --c-tinta: #202A44;            /* texto principal y superficies de énfasis (12.6:1 sobre hueso) */
+    --c-tinta-suave: #2C3858;      /* hover / ítem activo sobre tinta */
+    --c-rosa: #E8BFC8;             /* acentos y selección. NUNCA como texto sobre hueso (1.5:1) */
+    --c-rosa-suave: #F4DEE3;
+    --c-hueso: #F7F0EB;            /* fondo principal */
+    --c-hueso-oscuro: #EFE5DD;     /* superficies alternas, hover de filas */
+    --c-papel: #FFFCF9;            /* superficies elevadas: campos, fichas */
+    --c-dorado: #C5A56A;           /* detalles gráficos. NUNCA como texto sobre hueso (2.1:1) */
+
+    /* --- Texto ------------------------------------------------------------- */
+    --t-principal: var(--c-tinta);
+    --t-secundario: #5C5560;       /* 6.4:1 sobre hueso */
+    --t-terciario: #675F69;        /* solo metadatos; >= 4.5:1 sobre hueso */
+    --t-sobre-oscuro: #F7F0EB;
+    --t-sobre-oscuro-suave: #B9B6BC; /* 7.1:1 sobre tinta */
+
+    /* --- Bordes y divisores ----------------------------------------------- */
+    --borde: #E3D6CC;
+    --borde-fuerte: #CDBBAE;
+    --borde-tinta: var(--c-tinta);
+
+    /* --- Estados funcionales (texto / fondo, todos >= 5.7:1) -------------- */
+    --e-verde: #2E5B47;   --e-verde-fondo: #E1EDE5;
+    --e-tinta: #202A44;   --e-tinta-fondo: #E1E5EF;
+    --e-dorado: #6B4F16;  --e-dorado-fondo: #F3E6CC;
+    --e-alerta: #8F1D2C;  --e-alerta-fondo: #F6DCE0;
+    --e-grafito: #F7F0EB; --e-grafito-fondo: #3A3634;
+    --e-lila: #58466B;    --e-lila-fondo: #ECE6F1;
+    --e-piedra: #5F5650;  --e-piedra-fondo: #ECE5DF;
+
+    /* --- Foco y selección -------------------------------------------------- */
+    --foco: 0 0 0 3px rgba(89, 28, 50, 0.28);
+    --foco-contorno: 2px solid var(--c-borgona);
+
+    /* --- Tipografía -------------------------------------------------------- */
+    --f-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+    --f-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    /* --- Forma y movimiento ------------------------------------------------ */
+    --r-sm: 2px;
+    --r-md: 4px;
+    --sombra-ficha: 0 1px 0 var(--borde), 0 12px 28px -18px rgba(32, 42, 68, 0.35);
+    --transicion: 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    --rebote: 420ms cubic-bezier(0.34, 1.4, 0.64, 1);  /* caída de la cinta marcapáginas */
+    --ancho-lateral: 256px;
+
+    /* --- Bootstrap 5.3 adoptando la paleta --------------------------------- */
+    --bs-body-font-family: var(--f-sans);
+    --bs-body-font-size: 0.97rem;
+    --bs-body-line-height: 1.55;
+    --bs-body-bg: var(--c-hueso);
+    --bs-body-color: var(--t-principal);
+    --bs-emphasis-color: var(--c-tinta);
+    --bs-secondary-color: var(--t-secundario);
+    --bs-tertiary-color: var(--t-terciario);
+    --bs-secondary-bg: var(--c-hueso-oscuro);
+    --bs-tertiary-bg: var(--c-hueso-oscuro);
+    --bs-border-color: var(--borde);
+    --bs-border-radius: var(--r-md);
+    --bs-border-radius-sm: var(--r-sm);
+    --bs-border-radius-lg: var(--r-md);
+    --bs-link-color: var(--c-borgona);
+    --bs-link-color-rgb: 89, 28, 50;
+    --bs-link-hover-color: var(--c-borgona-oscuro);
+    --bs-link-hover-color-rgb: 67, 20, 42;
+    --bs-focus-ring-color: rgba(89, 28, 50, 0.28);
+
+    --bs-primary: #591C32;   --bs-primary-rgb: 89, 28, 50;
+    --bs-secondary: #5C5560; --bs-secondary-rgb: 92, 85, 96;
+    --bs-success: #2E5B47;   --bs-success-rgb: 46, 91, 71;
+    --bs-danger: #8F1D2C;    --bs-danger-rgb: 143, 29, 44;
+    --bs-warning: #6B4F16;   --bs-warning-rgb: 107, 79, 22;
+    --bs-info: #202A44;      --bs-info-rgb: 32, 42, 68;
+    --bs-dark: #202A44;      --bs-dark-rgb: 32, 42, 68;
+    --bs-light: #EFE5DD;     --bs-light-rgb: 239, 229, 221;
+
+    --bs-primary-text-emphasis: #591C32; --bs-primary-bg-subtle: #F4DEE3; --bs-primary-border-subtle: #E8BFC8;
+    --bs-success-text-emphasis: #2E5B47; --bs-success-bg-subtle: #E1EDE5; --bs-success-border-subtle: #BCD5C6;
+    --bs-danger-text-emphasis: #8F1D2C;  --bs-danger-bg-subtle: #F6DCE0;  --bs-danger-border-subtle: #E9B3BC;
+    --bs-warning-text-emphasis: #6B4F16; --bs-warning-bg-subtle: #F3E6CC; --bs-warning-border-subtle: #E2CC9C;
+    --bs-info-text-emphasis: #202A44;    --bs-info-bg-subtle: #E1E5EF;    --bs-info-border-subtle: #C3CADB;
+    --bs-light-text-emphasis: #202A44;   --bs-light-bg-subtle: #FFFCF9;   --bs-light-border-subtle: #E3D6CC;
+}

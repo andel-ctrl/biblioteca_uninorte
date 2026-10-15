@@ -1,43 +1,70 @@
 {% extends 'base.html' %}
-{% block title %}Iniciar Sesión — Biblioteca Universitaria{% endblock %}
+{% load static %}
+{% block title %}Iniciar sesión — Biblioteca Universitaria{% endblock %}
+{% block cuerpo_clase %}cuerpo-acceso{% endblock %}
+{% block barra %}{% endblock %}
 {% block content %}
-<div class="row justify-content-center py-5">
-    <div class="col-sm-10 col-md-6 col-lg-4">
-        <div class="card p-4 shadow-md border-0" style="border: 1px solid var(--color-border) !important;">
-            <div class="text-center mb-4">
-                <span class="brand-badge mb-3 mx-auto" style="width: 44px; height: 44px; font-size: 1.1rem;">B</span>
-                <h3 class="font-serif fw-bold mb-1">Acceso a Biblioteca</h3>
-                <p class="text-muted small">Ingresa tus credenciales para acceder a tus préstamos y catálogo.</p>
-            </div>
-
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold text-muted text-uppercase tracking-wider">Usuario</label>
-                    <input type="text" name="username" class="form-control" placeholder="admin o tu código" required autofocus>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label small fw-semibold text-muted text-uppercase tracking-wider">Contraseña</label>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                </div>
-
-                {% if form.errors %}
-                <div class="alert alert-danger py-2 small mb-3">
-                    <i class="bi bi-exclamation-circle me-1"></i> Usuario o contraseña incorrectos.
-                </div>
-                {% endif %}
-
-                <button type="submit" class="btn btn-forest w-100 py-2">
-                    Ingresar al Sistema
-                </button>
-            </form>
-
-            <div class="text-center mt-4 pt-3 border-top" style="border-color: var(--color-border-subtle) !important;">
-                <small class="text-muted">
-                    ¿Problemas de acceso? Contacta a la administración de biblioteca.
-                </small>
-            </div>
+<div class="acceso">
+    <!-- Panel visual: fotografía con tipografía editorial -->
+    <section class="acceso__visual" aria-hidden="true">
+        <picture>
+            <source srcset="{% static 'img/biblioteca-rotonda-1400.webp' %}" type="image/webp">
+            <img src="{% static 'img/biblioteca-rotonda-1400.jpg' %}" alt="" class="acceso__foto" fetchpriority="high">
+        </picture>
+        <svg class="acceso__arco" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet" focusable="false">
+            <path d="M60 470 A270 270 0 0 1 270 205" />
+            <path d="M330 205 A270 270 0 0 1 540 470" />
+            <path class="acceso__arco-estrella" d="M300 130 C303 160 309 170 340 174 C309 178 303 190 300 220 C297 190 291 178 260 174 C291 170 297 160 300 130 Z"/>
+        </svg>
+        <div class="acceso__texto">
+            <span class="marca__placa acceso__logo">{% include 'componentes/_logo.html' %}</span>
+            <p class="acceso__signatura">Biblioteca Universitaria · Préstamos</p>
+            <h2 class="acceso__lema">El archivo<br><em>sigue vivo.</em></h2>
+            <p class="acceso__bajada">Busca, solicita y sigue tus préstamos desde un solo lugar.</p>
         </div>
-    </div>
+        <p class="acceso__credito">Foto: Patrik Göthe · Unsplash</p>
+    </section>
+
+    <!-- Formulario -->
+    <section class="acceso__panel">
+        <span class="cinta acceso__cinta" aria-hidden="true"></span>
+        <p class="encabezado__ref"><span class="signatura">ACC</span> Acceso de lectores y personal</p>
+        <h1 class="acceso__titulo">Inicia <em>sesión</em></h1>
+        <p class="acceso__ayuda">Usa el usuario y la contraseña que te entregó la biblioteca.</p>
+
+        {% if form.errors %}
+        <div class="aviso aviso--error" role="alert">
+            <i class="bi bi-x-octagon" aria-hidden="true"></i>
+            <div class="aviso__texto">Usuario o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.</div>
+        </div>
+        {% endif %}
+
+        <form method="post" class="acceso__form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="campo-icono">
+                <label class="form-label" for="id_username">Usuario</label>
+                <div class="campo-icono__caja">
+                    <i class="bi bi-person" aria-hidden="true"></i>
+                    <input type="text" name="username" id="id_username" class="form-control" placeholder="Tu usuario"
+                           value="{{ form.username.value|default:'' }}" autocomplete="username" autocapitalize="none" required autofocus>
+                </div>
+            </div>
+            <div class="campo-icono">
+                <label class="form-label" for="id_password">Contraseña</label>
+                <div class="campo-icono__caja">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <input type="password" name="password" id="id_password" class="form-control" placeholder="Tu contraseña"
+                           autocomplete="current-password" required>
+                    <button type="button" class="campo-icono__ver" data-ver-clave="id_password" aria-label="Mostrar contraseña" aria-pressed="false">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100">Entrar a la biblioteca <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </form>
+
+        <p class="acceso__nota"><i class="bi bi-info-circle" aria-hidden="true"></i> ¿No tienes cuenta o olvidaste tu contraseña? Acércate al mostrador de la biblioteca: el personal crea y restablece las cuentas.</p>
+    </section>
 </div>
 {% endblock %}
