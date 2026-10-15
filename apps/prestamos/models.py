@@ -221,6 +221,8 @@ class Devolucion(models.Model):
         with transaction.atomic():
             if es_nueva:
                 self.calcular_multa()
+                if self.monto_multa <= 0:
+                    self.multa_pagada = False  # sin multa no hay pago que registrar
             super().save(*args, **kwargs)
             # Solo al registrar la devolución: cerrar préstamo y liberar (o enviar a mantenimiento) el ejemplar
             if es_nueva:

@@ -100,6 +100,9 @@ class DevolucionForm(forms.ModelForm):
         fecha.widget.attrs['max'] = timezone.localdate().isoformat()
         if prestamo and prestamo.fecha_prestamo:
             fecha.widget.attrs['min'] = prestamo.fecha_prestamo.isoformat()
+        # La fecha máxima es hoy: si hoy no hay retraso, ninguna fecha válida genera multa
+        if prestamo and prestamo.dias_retraso() == 0:
+            del self.fields['multa_pagada']
 
     def clean_fecha_devolucion(self):
         # Una devolución futura cobraría multa por días que no han pasado; una anterior al préstamo es imposible

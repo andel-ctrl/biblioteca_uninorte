@@ -223,7 +223,11 @@ class FormulariosTest(BaseBiblioteca):
         self.assertCampos(self.c_bib, reverse('prestamos:prestamo_list'), ['estado'], csrf=False)
         self.assertCampos(self.c_bib, reverse('prestamos:prestamo_aprobar', args=[p_pend.pk]), ['fecha_vencimiento'])
         self.assertCampos(self.c_bib, reverse('prestamos:prestamo_rechazar', args=[p_pend.pk]), [])
+        # a tiempo: sin casilla de pago (no puede haber multa); con retraso: con casilla
         self.assertCampos(self.c_bib, reverse('prestamos:devolucion_registrar', args=[p_act.pk]),
+                          ['fecha_devolucion', 'observacion', 'detalle_observacion'])
+        p_tarde = self.prestamo(ejemplar=self.ej_libre, prestado_hace=20, vence_en=-2)
+        self.assertCampos(self.c_bib, reverse('prestamos:devolucion_registrar', args=[p_tarde.pk]),
                           ['fecha_devolucion', 'observacion', 'detalle_observacion', 'multa_pagada'])
         self.assertCampos(self.c_bib, reverse('prestamos:prestamo_reportar_perdida', args=[p_act.pk]), [])
         self.assertCampos(self.c_bib, reverse('prestamos:multa_config'), ['tarifa_por_dia'])
@@ -1118,3 +1122,29 @@ class PersonajeTest(BaseBiblioteca):
 
     def test_bibliotecario_no_lleva_personaje(self):
         self.assertNotIn('ficha-cuenta__personaje', self.c_bib.get(reverse('reportes:dashboard')).content.decode())
+
+
+# ---------------------------------------------------------------------------
+# Devolución: la casilla de pago solo cuando puede haber multa
+# ---------------------------------------------------------------------------
+class DevolucionPagoTest(BaseBiblioteca):
+    def test_a_tiempo_no_muestra_la_casilla_de_pago(self):
+        p = self.prestamo(prestado_hace=3, vence_en=10)
+        r = self.c_bib.get(reverse('prestamos:devolucion_registrar', args=[p.pk]))
+        self.assertNotContains(r, 'name="multa_pagada"')
+        self.assertContains(r, 'Entrega a tiempo')
+
+    def test_con_retraso_si_la_muestra_y_trae_la_tarifa(self):
+        p = self.prestamo(prestado_hace=20, vence_en=-3)
+        r = self.c_bib.get(reverse('prestamos:devolucion_registrar', args=[p.pk]))
+        self.assertContains(r, 'name="multa_pagada"')
+        self.assertContains(r, 'data-tarifa="500')
+        self.assertContains(r, '3 días de retraso × $500 por día')
+
+    def test_sin_multa_nunca_queda_como_pagada(self):
+        p = self.prestamo(prestado_hace=3, vence_en=10)
+        self.c_bib.post(reverse('prestamos:devolucion_registrar', args=[p.pk]),
+                        {'fecha_devolucion': hace(0).isoformat(), 'observacion': '', 'multa_pagada': 'on'})
+        d = Devolucion.objects.get(prestamo=p)
+        self.assertEqual(d.monto_multa, 0)
+        self.assertFalse(d.multa_pagada)

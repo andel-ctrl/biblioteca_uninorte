@@ -230,4 +230,35 @@
         document.querySelectorAll('form[data-enviando]').forEach(function (f) { delete f.dataset.enviando; });
         document.querySelectorAll('.is-cargando').forEach(function (b) { marcarCargando(b, false); });
     });
+
+    // Devolución: la multa se recalcula con la fecha elegida y la casilla de pago solo aparece si hay multa
+    var panelMulta = document.querySelector('[data-multa-estimada]');
+    var campoFecha = document.getElementById('id_fecha_devolucion');
+    if (panelMulta && campoFecha) {
+        var campoPago = document.querySelector('[data-campo-pago]');
+        var vencimiento = new Date(panelMulta.dataset.vencimiento + 'T00:00:00');
+        var tarifa = parseFloat(panelMulta.dataset.tarifa) || 0;
+        var pesos = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+        var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        var recalcular = function () {
+            if (!campoFecha.value) return;
+            var fecha = new Date(campoFecha.value + 'T00:00:00');
+            var dias = Math.max(0, Math.round((fecha - vencimiento) / 86400000));
+            var monto = dias * tarifa;
+            panelMulta.querySelector('[data-multa-titulo]').textContent =
+                fecha.getTime() === hoy.getTime() ? 'Multa si se devuelve hoy' : 'Multa con la fecha elegida';
+            panelMulta.querySelector('[data-multa-monto]').textContent = '$' + pesos.format(monto);
+            panelMulta.querySelector('[data-multa-detalle]').textContent = monto > 0
+                ? dias + ' día' + (dias > 1 ? 's' : '') + ' de retraso × $' + pesos.format(tarifa) + ' por día'
+                : 'Entrega a tiempo';
+            panelMulta.classList.toggle('multa-estimada--mora', monto > 0);
+            if (campoPago) {
+                campoPago.hidden = monto <= 0;
+                if (monto <= 0) campoPago.querySelector('input').checked = false;
+            }
+        };
+        campoFecha.addEventListener('change', recalcular);
+        campoFecha.addEventListener('input', recalcular);
+        recalcular();
+    }
 })();

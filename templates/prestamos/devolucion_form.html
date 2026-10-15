@@ -13,10 +13,11 @@
     <div><dt>Vencimiento</dt><dd class="cifra {% if prestamo.estado == 'vencido' %}text-danger{% endif %}">{{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</dd></div>
     <div><dt>Estado</dt><dd>{% estado prestamo.estado 'prestamo' %}</dd></div>
 </dl>
-<div class="multa-estimada {% if multa_estimada > 0 %}multa-estimada--mora{% endif %}">
-    <span>Multa si se devuelve hoy</span>
-    <strong class="cifra">{% if multa_estimada > 0 %}{{ multa_estimada|pesos }}{% else %}{{ 0|pesos }}{% endif %}</strong>
-    <small>{% if multa_estimada > 0 %}{{ prestamo.dias_retraso }} día{{ prestamo.dias_retraso|pluralize }} de retraso × tarifa vigente{% else %}Entrega a tiempo{% endif %}</small>
+<div class="multa-estimada {% if multa_estimada > 0 %}multa-estimada--mora{% endif %}" data-multa-estimada
+     data-vencimiento="{{ prestamo.fecha_vencimiento|date:'Y-m-d' }}" data-tarifa="{{ tarifa|stringformat:'s' }}" aria-live="polite">
+    <span data-multa-titulo>Multa si se devuelve hoy</span>
+    <strong class="cifra" data-multa-monto>{% if multa_estimada > 0 %}{{ multa_estimada|pesos }}{% else %}{{ 0|pesos }}{% endif %}</strong>
+    <small data-multa-detalle>{% if multa_estimada > 0 %}{{ prestamo.dias_retraso }} día{{ prestamo.dias_retraso|pluralize }} de retraso × {{ tarifa|pesos }} por día{% else %}Entrega a tiempo{% endif %}</small>
 </div>
 <h2>Qué pasa con el ejemplar</h2>
 <ul>
@@ -30,7 +31,7 @@
 {% include 'componentes/_campo.html' with field=form.fecha_devolucion %}
 {% include 'componentes/_campo.html' with field=form.observacion %}
 {% include 'componentes/_campo.html' with field=form.detalle_observacion %}
-{% include 'componentes/_campo.html' with field=form.multa_pagada %}
+{% if 'multa_pagada' in form.fields %}<div data-campo-pago>{% include 'componentes/_campo.html' with field=form.multa_pagada %}</div>{% endif %}
 {% endblock %}
 
 {% block boton %}Confirmar devolución{% endblock %}

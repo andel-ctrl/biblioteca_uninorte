@@ -223,6 +223,7 @@ def devolucion_registrar(request, prestamo_pk):
 
     multa_estimada = prestamo.multa_estimada()
     return render(request, 'prestamos/devolucion_form.html', {
+        'tarifa': ConfiguracionMulta.tarifa_vigente(),
         'form': form,
         'prestamo': prestamo,
         'multa_estimada': multa_estimada,
