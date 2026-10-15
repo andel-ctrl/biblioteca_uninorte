@@ -1,0 +1,13 @@
+# Credenciales
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Entornos virtuales
+venv/
+.venv/
+
+# Django
+staticfiles/
