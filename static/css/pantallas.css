@@ -219,3 +219,85 @@
     .destacado__portada .lomo__inicial { font-size: 2.4rem; }
     .reciente:nth-child(even) { margin-left: 0.9rem; }
 }
+
+/* ==========================================================================
+   MIS PRÉSTAMOS
+   Grupos editoriales sin cajas · línea de tiempo del plazo · historial
+   ========================================================================== */
+.cuenta-estado { display: grid; justify-items: end; gap: 0.35rem; }
+.cuenta-estado__etiqueta { font-family: var(--f-mono); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--t-secundario); }
+
+.grupo-prestamos { margin-bottom: 3.25rem; }
+.grupo-prestamos__titulo {
+    display: flex; align-items: baseline; gap: 0.75rem; margin: 0 0 0.25rem; padding-bottom: 0.7rem;
+    font-size: clamp(1.6rem, 1.3rem + 1vw, 2.1rem); font-weight: 400; letter-spacing: -0.03em; border-bottom: 1.5px solid var(--c-tinta);
+}
+.grupo-prestamos__titulo em { font-style: italic; color: var(--c-borgona); font-weight: 360; }
+.grupo-prestamos__n { font-family: var(--f-mono); font-size: 0.8rem; color: var(--t-secundario); letter-spacing: 0; }
+.grupo-prestamos__vacio { padding: 1.25rem 0; color: var(--t-secundario); margin: 0; }
+
+.prestamo-fila {
+    position: relative; display: grid; align-items: center; gap: 1.25rem 2.25rem;
+    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr) minmax(0, 0.8fr) auto;
+    padding: 1.35rem 0.25rem; border-bottom: 1px solid var(--borde);
+    transition: background-color var(--transicion), box-shadow var(--transicion);
+}
+.prestamo-fila:hover { background: var(--c-papel); box-shadow: inset 3px 0 0 var(--c-borgona); }
+.prestamo-fila--compacta { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto; padding: 1rem 0.25rem; }
+.prestamo-fila__titulo { font-size: 1.3rem; line-height: 1.15; margin: 0 0 0.2rem; font-weight: 450; letter-spacing: -0.02em; }
+.prestamo-fila--compacta .prestamo-fila__titulo { font-size: 1.12rem; }
+.prestamo-fila__titulo a { color: var(--c-tinta); text-decoration: none; }
+.prestamo-fila__titulo a:hover { color: var(--c-borgona); }
+.prestamo-fila__autores { margin: 0; font-family: var(--f-serif); font-style: italic; color: var(--t-secundario); font-size: 0.98rem; }
+.prestamo-fila--compacta .prestamo-fila__autores { font-family: var(--f-sans); font-style: normal; font-size: 0.86rem; }
+.prestamo-fila__estado { display: grid; justify-items: start; gap: 0.4rem; }
+.prestamo-fila__nota { font-size: 0.84rem; color: var(--t-secundario); font-weight: 500; }
+.prestamo-fila__nota--alerta { color: var(--e-alerta); font-weight: 600; }
+.prestamo-fila__nota--aviso { color: var(--e-dorado); font-weight: 600; }
+
+/* Línea de tiempo del plazo: avance real entre préstamo y vencimiento */
+.plazo__barra { position: relative; height: 6px; background: var(--c-hueso-oscuro); border-radius: 3px; overflow: visible; }
+.plazo__avance {
+    position: absolute; left: 0; top: 0; bottom: 0; width: var(--avance); border-radius: 3px;
+    background: linear-gradient(90deg, var(--c-tinta), var(--c-borgona));
+    transform-origin: left center; animation: plazo-crece 900ms cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+.plazo__hoy {
+    position: absolute; top: 50%; left: var(--avance); width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    border-radius: 50%; background: var(--c-hueso); box-shadow: 0 0 0 2px var(--c-borgona);
+}
+.prestamo-fila--vencido .plazo__avance { background: var(--e-alerta); }
+.prestamo-fila--vencido .plazo__hoy { box-shadow: 0 0 0 2px var(--e-alerta); background: var(--e-alerta-fondo); }
+.plazo__fechas { display: flex; justify-content: space-between; gap: 0.5rem; margin-top: 0.55rem; font-family: var(--f-mono); font-size: 0.68rem; letter-spacing: 0.04em; color: var(--t-secundario); }
+.plazo__fechas strong { color: var(--c-tinta); font-weight: 500; }
+.prestamo-fila--vencido .plazo__fechas span:last-child strong { color: var(--e-alerta); }
+@keyframes plazo-crece { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Historial: filas editoriales con fecha al margen */
+.historial { list-style: none; margin: 0; padding: 0; }
+.historial__fila {
+    display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto 11rem; gap: 1rem 1.75rem; align-items: center;
+    padding: 0.95rem 0.25rem; border-bottom: 1px solid var(--borde); transition: background-color var(--transicion);
+}
+.historial__fila:hover { background: var(--c-papel); }
+.historial__fecha { font-size: 0.78rem; color: var(--t-secundario); }
+.historial__libro a { font-family: var(--f-serif); font-size: 1.08rem; font-weight: 450; color: var(--c-tinta); text-decoration: none; letter-spacing: -0.01em; }
+.historial__libro a:hover { color: var(--c-borgona); }
+.historial__multa { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
+.historial__sin { font-size: 0.82rem; color: var(--t-secundario); }
+
+@media (max-width: 991.98px) {
+    .prestamo-fila { grid-template-columns: minmax(0, 1fr) auto; }
+    .prestamo-fila .plazo { grid-column: 1 / -1; grid-row: 2; }
+    .prestamo-fila__estado { grid-column: 1; grid-row: 3; }
+    .prestamo-fila__accion { grid-column: 2; grid-row: 3; align-self: center; }
+    .prestamo-fila--compacta { grid-template-columns: minmax(0, 1fr) auto; }
+    .prestamo-fila--compacta .prestamo-fila__estado { grid-row: 2; }
+    .prestamo-fila--compacta .prestamo-fila__accion { grid-row: 2; }
+}
+@media (max-width: 767.98px) {
+    .cuenta-estado { justify-items: start; }
+    .historial__fila { grid-template-columns: minmax(0, 1fr) auto; }
+    .historial__fecha { grid-column: 1 / -1; }
+    .historial__multa { grid-column: 1 / -1; justify-content: flex-start; }
+}

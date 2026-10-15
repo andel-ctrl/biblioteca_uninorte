@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.db.models import ProtectedError
+from django.utils import timezone
 from .models import UsuarioBiblioteca
 from apps.prestamos.models import Prestamo
 from .forms import UsuarioBibliotecaForm, RegistroForm
@@ -83,5 +84,30 @@ def mi_historial(request):
         messages.error(request, 'No tienes perfil de biblioteca asociado.')
         return redirect('catalogos:libro_list')
     Prestamo.actualizar_vencidos()
-    prestamos = perfil.prestamos.select_related('ejemplar__libro').order_by('-fecha_solicitud')
-    return render(request, 'usuarios/mi_historial.html', {'prestamos': prestamos, 'perfil': perfil})
+    prestamos = list(
+        perfil.prestamos.select_related('ejemplar__libro', 'devolucion').prefetch_related('ejemplar__libro__autores')
+        .order_by('-fecha_solicitud')
+    )
+
+    # Línea de tiempo de los préstamos en curso: qué parte del plazo ya pasó
+    hoy = timezone.localdate()
+    en_curso = sorted([p for p in prestamos if p.estado in ('activo', 'vencido')], key=lambda p: p.fecha_vencimiento)
+    for p in en_curso:
+        plazo = max((p.fecha_vencimiento - p.fecha_prestamo).days, 1)
+        transcurrido = (hoy - p.fecha_prestamo).days
+        p.progreso = min(100, max(0, round(transcurrido * 100 / plazo)))
+        p.dias_restantes = (p.fecha_vencimiento - hoy).days
+
+    historial = [p for p in prestamos if p.estado in ('devuelto', 'rechazado', 'perdido')]
+    multas_pendientes = [p for p in historial if hasattr(p, 'devolucion') and p.devolucion.monto_multa > 0 and not p.devolucion.multa_pagada]
+
+    pendientes = [p for p in prestamos if p.estado == 'pendiente']
+    return render(request, 'usuarios/mi_historial.html', {
+        'prestamos': prestamos,
+        'perfil': perfil,
+        'en_curso': en_curso,
+        'pendientes': pendientes,
+        'resumen': f'{len(en_curso)} en curso · {len(pendientes)} por aprobar · {len(historial)} en el historial',
+        'historial': historial,
+        'multas_pendientes_total': sum((p.devolucion.monto_multa for p in multas_pendientes), 0),
+    })

@@ -632,3 +632,40 @@ class InicioYCatalogoTest(BaseBiblioteca):
         libros = {l.pk: l for l in self.c_lec.get(reverse('catalogos:libro_list')).context['libros']}
         self.assertEqual((libros[self.libro.pk].n_disponibles, libros[self.libro.pk].n_ejemplares), (3, 3))
         self.assertEqual(libros[self.libro_sin_stock.pk].n_disponibles, 0)
+
+
+# ---------------------------------------------------------------------------
+# 9. Mis préstamos
+# ---------------------------------------------------------------------------
+class MisPrestamosTest(BaseBiblioteca):
+
+    def test_agrupa_y_calcula_el_plazo(self):
+        activo = self.prestamo(ejemplar=self.ej1, prestado_hace=5, vence_en=5)     # mitad del plazo
+        self.prestamo(ejemplar=self.ej2, prestado_hace=20, vence_en=-2)            # vencido
+        self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
+        self.prestamo(ejemplar=self.ej_libre, estado='rechazado')
+        r = self.c_lec.get(reverse('usuarios:mi_historial'))
+        c = r.context
+        self.assertEqual((len(c['en_curso']), len(c['pendientes']), len(c['historial'])), (2, 1, 1))
+        fila = next(p for p in c['en_curso'] if p.pk == activo.pk)
+        self.assertEqual((fila.progreso, fila.dias_restantes), (50, 5))
+        self.assertContains(r, '2 días de retraso')
+        self.assertContains(r, '2 en curso · 1 por aprobar · 1 en el historial')
+
+    def test_multas_pendientes_y_pagadas(self):
+        p1 = self.prestamo(ejemplar=self.ej1, prestado_hace=20, vence_en=-2)
+        Devolucion.objects.create(prestamo=p1, fecha_devolucion=timezone.localdate())
+        p2 = self.prestamo(ejemplar=self.ej2, prestado_hace=20, vence_en=-1)
+        Devolucion.objects.create(prestamo=p2, fecha_devolucion=timezone.localdate(), multa_pagada=True)
+        r = self.c_lec.get(reverse('usuarios:mi_historial'))
+        self.assertEqual(r.context['multas_pendientes_total'], Decimal('1000.00'))
+        self.assertContains(r, 'Por pagar')
+        self.assertContains(r, 'Pagada')
+
+    def test_cuenta_bloqueada_se_avisa(self):
+        self.lec.estado = 'bloqueado'
+        self.lec.save()
+        self.assertContains(self.c_lec.get(reverse('usuarios:mi_historial')), 'Tu cuenta está bloqueada')
+
+    def test_sin_prestamos_invita_al_catalogo(self):
+        self.assertContains(self.c_lec.get(reverse('usuarios:mi_historial')), 'Aún no tienes préstamos')

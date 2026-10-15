@@ -1,101 +1,124 @@
 {% extends 'base.html' %}
-{% block title %}Mis Préstamos — Biblioteca{% endblock %}
+{% load biblioteca_ui %}
+{% block title %}Mis préstamos — Biblioteca{% endblock %}
 {% block content %}
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pt-2">
+<header class="encabezado">
     <div>
-        <span class="text-uppercase small fw-bold tracking-wider" style="color: var(--color-terracotta); letter-spacing: 0.1em;">Panel del Lector</span>
-        <h1 class="display-6 fw-bold mb-1">Mis Préstamos & Solicitudes</h1>
-        <p class="text-muted mb-0">Seguimiento de tus libros prestados, plazos de entrega y estado de cuenta.</p>
+        <p class="encabezado__ref"><span class="signatura">LEC</span> Ficha de lector · {{ perfil.codigo_universitario }}</p>
+        <h1 class="encabezado__titulo">Mis <em>préstamos</em></h1>
+        <p class="encabezado__bajada">Lo que tienes en tus manos, lo que espera aprobación y todo lo que ya devolviste.</p>
     </div>
-    <div>
-        <div class="card p-2 px-3 shadow-sm d-flex flex-row align-items-center gap-3">
-            <div>
-                <small class="text-muted d-block">Estado de Cuenta</small>
-                {% if perfil.esta_activo %}
-                <span class="badge-status badge-disponible"><i class="bi bi-check-circle"></i> Activo</span>
-                {% else %}
-                <span class="badge-status badge-vencido"><i class="bi bi-x-circle"></i> Bloqueado</span>
-                {% endif %}
-            </div>
-            <div class="border-start ps-3" style="border-color: var(--color-border) !important;">
-                <small class="text-muted d-block">Código</small>
-                <span class="font-monospace fw-semibold">{{ perfil.codigo_universitario }}</span>
+    <div class="cuenta-estado">
+        <span class="cuenta-estado__etiqueta">Estado de la cuenta</span>
+        {% estado perfil.estado 'usuario' %}
+    </div>
+</header>
+{% include 'componentes/_colofon.html' with dato=resumen %}
+
+{% if not perfil.esta_activo %}
+<div class="aviso aviso--error mb-4" role="status">
+    <i class="bi bi-person-lock" aria-hidden="true"></i>
+    <div class="aviso__texto">Tu cuenta está bloqueada: no puedes solicitar nuevos préstamos. Acércate al mostrador de la biblioteca para revisarla.</div>
+</div>
+{% endif %}
+{% if multas_pendientes_total %}
+<div class="aviso aviso--warning mb-4" role="status">
+    <i class="bi bi-cash-coin" aria-hidden="true"></i>
+    <div class="aviso__texto">Tienes <strong>${{ multas_pendientes_total }}</strong> en multas pendientes de pago. El pago se registra en el mostrador de la biblioteca.</div>
+</div>
+{% endif %}
+
+{% if not prestamos %}
+<div class="vacio">
+    {% include 'componentes/_ilustracion_estante.html' %}
+    <h2>Aún no tienes préstamos</h2>
+    <p>Busca un libro en el catálogo y solicita un ejemplar disponible. Aquí podrás seguir su estado.</p>
+    <a class="btn btn-primary mt-2" href="{% url 'catalogos:libro_list' %}">Ir al catálogo <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+</div>
+{% else %}
+
+<!-- En tus manos: activos y vencidos, con línea de tiempo del plazo -->
+<section class="grupo-prestamos" aria-labelledby="g-curso">
+    <h2 id="g-curso" class="grupo-prestamos__titulo">En tus <em>manos</em> <span class="grupo-prestamos__n">{{ en_curso|length }}</span></h2>
+    {% for p in en_curso %}
+    <article class="prestamo-fila {% if p.estado == 'vencido' %}prestamo-fila--vencido{% endif %}">
+        <div class="prestamo-fila__libro">
+            <p class="registro__ref">Préstamo {{ p.pk|stringformat:"04d" }}<span class="sep">/</span>Ejemplar {{ p.ejemplar.codigo_barras }}</p>
+            <h3 class="prestamo-fila__titulo"><a href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a></h3>
+            <p class="prestamo-fila__autores">{{ p.ejemplar.libro.autores.all|join:"; "|default:"Autor no especificado" }}</p>
+        </div>
+        <div class="plazo" role="img" aria-label="Prestado el {{ p.fecha_prestamo|date:'d/m/Y' }}, vence el {{ p.fecha_vencimiento|date:'d/m/Y' }}. Ha transcurrido el {{ p.progreso }} % del plazo.">
+            <div class="plazo__barra"><span class="plazo__avance" style="--avance: {{ p.progreso }}%"></span><span class="plazo__hoy" style="--avance: {{ p.progreso }}%"></span></div>
+            <div class="plazo__fechas">
+                <span>Prestado <strong>{{ p.fecha_prestamo|date:"d/m" }}</strong></span>
+                <span>Vence <strong>{{ p.fecha_vencimiento|date:"d/m/Y" }}</strong></span>
             </div>
         </div>
-    </div>
-</div>
+        <div class="prestamo-fila__estado">
+            {% estado p.estado 'prestamo' %}
+            {% if p.estado == 'vencido' %}
+            <span class="prestamo-fila__nota prestamo-fila__nota--alerta">{{ p.dias_retraso }} día{{ p.dias_retraso|pluralize }} de retraso · mora ${{ p.multa_estimada }}</span>
+            {% elif p.dias_restantes == 0 %}
+            <span class="prestamo-fila__nota prestamo-fila__nota--aviso">Vence hoy</span>
+            {% else %}
+            <span class="prestamo-fila__nota">Quedan {{ p.dias_restantes }} día{{ p.dias_restantes|pluralize }}</span>
+            {% endif %}
+        </div>
+        <a class="accion prestamo-fila__accion" href="{% url 'prestamos:prestamo_detail' p.pk %}">Ver detalle <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </article>
+    {% empty %}
+    <p class="grupo-prestamos__vacio">No tienes libros prestados en este momento. <a class="enlace" href="{% url 'catalogos:inicio' %}">Busca tu próxima lectura</a>.</p>
+    {% endfor %}
+</section>
 
-<div class="card shadow-sm mb-5">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 font-serif">Historial Completo</h5>
-        <a href="{% url 'catalogos:libro_list' %}" class="btn btn-sm btn-outline-forest">
-            <i class="bi bi-plus-lg me-1"></i> Explorar Catálogo
-        </a>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Libro</th>
-                    <th>Ejemplar</th>
-                    <th>Solicitud</th>
-                    <th>Vencimiento</th>
-                    <th>Estado</th>
-                    <th>Multa</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in prestamos %}
-                <tr>
-                    <td class="text-muted small">#{{ p.pk }}</td>
-                    <td class="fw-medium font-serif">{{ p.ejemplar.libro.titulo|truncatechars:42 }}</td>
-                    <td><code class="text-dark bg-light px-2 py-1 rounded">{{ p.ejemplar.codigo_barras }}</code></td>
-                    <td class="text-muted small">{{ p.fecha_solicitud|date:"d M Y" }}</td>
-                    <td class="small">
-                        {% if p.fecha_vencimiento %}
-                            <span class="{% if p.estado == 'vencido' %}text-danger fw-bold{% endif %}">{{ p.fecha_vencimiento|date:"d M Y" }}</span>
-                        {% else %}
-                            <span class="text-muted">&mdash;</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if p.estado == 'pendiente' %}
-                        <span class="badge-status badge-prestado">Pendiente</span>
-                        {% elif p.estado == 'activo' %}
-                        <span class="badge-status badge-disponible">Activo</span>
-                        {% elif p.estado == 'vencido' %}
-                        <span class="badge-status badge-vencido">Vencido</span>
-                        {% elif p.estado == 'devuelto' %}
-                        <span class="badge-status badge-devuelto">Devuelto</span>
-                        {% elif p.estado == 'rechazado' %}
-                        <span class="badge-status badge-vencido">Rechazado</span>
-                        {% elif p.estado == 'perdido' %}
-                        <span class="badge-status badge-perdido">Perdido</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if p.devolucion and p.devolucion.monto_multa > 0 %}
-                            <span class="fw-semibold text-danger">${{ p.devolucion.monto_multa }}</span>
-                        {% elif p.multa_estimada > 0 %}
-                            <span class="fw-semibold text-danger">${{ p.multa_estimada }} (mora)</span>
-                        {% else %}
-                            <span class="text-muted">&mdash;</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
-                        <i class="bi bi-book fs-1 d-block mb-2 opacity-25"></i>
-                        Aún no has solicitado préstamos. ¡Explora el catálogo y pide tu primer libro!
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+<!-- Esperando aprobación -->
+{% if pendientes %}
+<section class="grupo-prestamos" aria-labelledby="g-pend">
+    <h2 id="g-pend" class="grupo-prestamos__titulo">Esperando <em>aprobación</em> <span class="grupo-prestamos__n">{{ pendientes|length }}</span></h2>
+    {% for p in pendientes %}
+    <article class="prestamo-fila prestamo-fila--compacta">
+        <div class="prestamo-fila__libro">
+            <h3 class="prestamo-fila__titulo"><a href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a></h3>
+            <p class="prestamo-fila__autores">Ejemplar <span class="mono">{{ p.ejemplar.codigo_barras }}</span> · solicitado el {{ p.fecha_solicitud|date:"d/m/Y" }}</p>
+        </div>
+        <div class="prestamo-fila__estado">
+            {% estado p.estado 'prestamo' %}
+            <span class="prestamo-fila__nota">El personal de la biblioteca revisará tu solicitud</span>
+        </div>
+        <a class="accion prestamo-fila__accion" href="{% url 'prestamos:prestamo_detail' p.pk %}">Ver detalle <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </article>
+    {% endfor %}
+</section>
+{% endif %}
+
+<!-- Historial -->
+{% if historial %}
+<section class="grupo-prestamos" aria-labelledby="g-hist">
+    <h2 id="g-hist" class="grupo-prestamos__titulo">Historial <span class="grupo-prestamos__n">{{ historial|length }}</span></h2>
+    <ol class="historial">
+        {% for p in historial %}
+        <li class="historial__fila">
+            <span class="historial__fecha cifra" title="{% if p.fecha_prestamo %}Fecha de préstamo{% else %}Fecha de solicitud{% endif %}">{{ p.fecha_prestamo|default:p.fecha_solicitud|date:"d.m.Y" }}</span>
+            <div class="historial__libro">
+                <a href="{% url 'prestamos:prestamo_detail' p.pk %}">{{ p.ejemplar.libro.titulo }}</a>
+                <span class="tabla__meta">
+                    {% if p.estado == 'rechazado' %}Solicitud no aprobada
+                    {% elif p.devolucion %}{% if p.estado == 'perdido' %}Pérdida registrada{% else %}Devuelto{% endif %} el {{ p.devolucion.fecha_devolucion|date:"d/m/Y" }}{% if p.devolucion.observacion and p.estado != 'perdido' %} · {{ p.devolucion.get_observacion_display }}{% endif %}{% endif %}
+                </span>
+            </div>
+            <span class="historial__estado">{% estado p.estado 'prestamo' %}</span>
+            <span class="historial__multa">
+                {% if p.devolucion and p.devolucion.monto_multa > 0 %}
+                <span class="cifra">${{ p.devolucion.monto_multa }}</span>
+                {% if p.devolucion.multa_pagada %}{% estado 'pagada' 'multa' 'Pagada' %}{% else %}{% estado 'pendiente' 'multa' 'Por pagar' %}{% endif %}
+                {% else %}<span class="historial__sin">Sin multa</span>{% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ol>
+</section>
+{% endif %}
+{% endif %}
 
 {% endblock %}
