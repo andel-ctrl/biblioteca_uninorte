@@ -12,7 +12,7 @@ def home_redirect(request):
         return redirect('login')
     if es_bibliotecario_o_staff(request.user):
         return redirect('reportes:dashboard')
-    return redirect('catalogos:libro_list')
+    return redirect('catalogos:inicio')
 
 
 def logout_view(request):

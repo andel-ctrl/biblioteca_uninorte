@@ -1,0 +1,22 @@
+{% comment %}
+Paginación que conserva los filtros. Requiere: pagina (Page), numeros_pagina, filtros_url.
+{% endcomment %}
+{% if pagina.has_other_pages %}
+<nav class="paginacion" aria-label="Páginas del catálogo">
+    {% if pagina.has_previous %}
+    <a class="paginacion__paso" href="?{% if filtros_url %}{{ filtros_url }}&{% endif %}pagina={{ pagina.previous_page_number }}" rel="prev"><i class="bi bi-arrow-left" aria-hidden="true"></i> Anterior</a>
+    {% else %}<span class="paginacion__paso is-inactivo" aria-disabled="true"><i class="bi bi-arrow-left" aria-hidden="true"></i> Anterior</span>{% endif %}
+
+    <ol class="paginacion__numeros">
+        {% for n in numeros_pagina %}
+        {% if n == pagina.paginator.ELLIPSIS %}<li><span class="paginacion__elipsis">…</span></li>
+        {% elif n == pagina.number %}<li><span class="paginacion__num" aria-current="page">{{ n }}</span></li>
+        {% else %}<li><a class="paginacion__num" href="?{% if filtros_url %}{{ filtros_url }}&{% endif %}pagina={{ n }}">{{ n }}</a></li>{% endif %}
+        {% endfor %}
+    </ol>
+
+    {% if pagina.has_next %}
+    <a class="paginacion__paso" href="?{% if filtros_url %}{{ filtros_url }}&{% endif %}pagina={{ pagina.next_page_number }}" rel="next">Siguiente <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    {% else %}<span class="paginacion__paso is-inactivo" aria-disabled="true">Siguiente <i class="bi bi-arrow-right" aria-hidden="true"></i></span>{% endif %}
+</nav>
+{% endif %}

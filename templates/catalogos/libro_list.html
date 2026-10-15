@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% load biblioteca_ui %}
-{% block title %}Catálogo — Biblioteca{% endblock %}
+{% block title %}Catálogo completo — Biblioteca{% endblock %}
 {% block content %}
 
 <header class="encabezado">
     <div>
         <p class="encabezado__ref"><span class="signatura">CAT</span> Colección universitaria</p>
-        <h1 class="encabezado__titulo">Catálogo</h1>
-        <p class="encabezado__bajada">Busca por título, autor o ISBN, filtra por categoría y consulta qué ejemplares están disponibles para préstamo.</p>
+        <h1 class="encabezado__titulo">Catálogo <em>completo</em></h1>
+        <p class="encabezado__bajada">Busca por título, autor o ISBN, filtra por categoría y disponibilidad, y ordena los resultados.</p>
     </div>
     {% if es_bibliotecario %}
     <div class="encabezado__acciones">
@@ -15,9 +15,9 @@
     </div>
     {% endif %}
 </header>
-{% include 'componentes/_colofon.html' with n=libros|length etiqueta='títulos en la colección' %}
+{% include 'componentes/_colofon.html' with n=paginador.count etiqueta='títulos encontrados' %}
 
-<form method="get" class="buscador" role="search">
+<form method="get" class="buscador buscador--catalogo" role="search">
     <div class="buscador__campo">
         <label class="visually-hidden" for="buscar-q">Buscar</label>
         <i class="bi bi-search" aria-hidden="true"></i>
@@ -39,57 +39,37 @@
             <option value="1" {% if disponible == '1' %}selected{% endif %}>Solo disponibles</option>
         </select>
     </div>
+    <div>
+        <label class="visually-hidden" for="buscar-orden">Ordenar por</label>
+        <select id="buscar-orden" name="orden" class="form-select">
+            {% for clave, etiqueta in ordenes %}
+            <option value="{{ clave }}" {% if orden == clave %}selected{% endif %}>{{ etiqueta }}</option>
+            {% endfor %}
+        </select>
+    </div>
     <button type="submit" class="btn btn-secondary"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
 </form>
 
-{% with total=libros|length %}
 <div class="coleccion__cabecera">
-    <span>{{ total }} registro{{ total|pluralize }}{% if query %} para «{{ query }}»{% endif %}</span>
-    {% if query or categoria_id or disponible %}<a href="{% url 'catalogos:libro_list' %}">Limpiar filtros</a>{% endif %}
+    <span>
+        {% if paginador.count %}Mostrando <strong>{{ pagina.start_index }}–{{ pagina.end_index }}</strong> de {{ paginador.count }}{% else %}Sin resultados{% endif %}
+        {% if query %} para «{{ query }}»{% endif %}
+    </span>
+    {% if query or categoria_id or disponible or orden != 'titulo' %}<a class="enlace" href="{% url 'catalogos:libro_list' %}">Limpiar filtros</a>{% endif %}
 </div>
 
-{% if total %}
+{% if pagina.object_list %}
 <ol class="coleccion">
-    {% for libro in libros %}
-    <li class="registro">
-        <div class="registro__portada">
-            {% if libro.portada %}
-            <img src="{{ libro.portada.url }}" alt="" loading="lazy">
-            {% else %}
-            <div class="lomo lomo--{{ libro.pk|stringformat:'d'|slice:'-1:' }}" aria-hidden="true">
-                <span class="lomo__inicial">{{ libro.titulo|first|upper }}</span>
-                <span class="lomo__anio">{{ libro.anio_publicacion }}</span>
-            </div>
-            {% endif %}
-        </div>
-        <div>
-            <div class="registro__ref">
-                {{ libro.categoria.nombre|default:"General" }}<span class="sep">/</span>{{ libro.anio_publicacion }}<span class="sep">/</span>ISBN {{ libro.isbn }}
-            </div>
-            <h2 class="registro__titulo"><a href="{% url 'catalogos:libro_detail' libro.pk %}">{{ libro.titulo }}</a></h2>
-            <div class="registro__autores">
-                {% if libro.autores.all %}{{ libro.autores.all|join:"; " }}{% else %}Autor no especificado{% endif %}
-                <span class="registro__editorial">— {{ libro.editorial }}</span>
-            </div>
-        </div>
-        <div class="registro__lateral">
-            {% with disp=libro.ejemplares_disponibles %}
-            {% if disp > 0 %}{% estado 'disponible' 'libro' %}{% else %}{% estado 'agotado' 'libro' %}{% endif %}
-            <span class="registro__copias">{{ disp }} de {{ libro.total_ejemplares }} ejemplar{{ libro.total_ejemplares|pluralize:"es" }}</span>
-            {% endwith %}
-            <a class="registro__ir" href="{% url 'catalogos:libro_detail' libro.pk %}" tabindex="-1" aria-hidden="true">Ver ficha <i class="bi bi-arrow-right"></i></a>
-        </div>
-    </li>
-    {% endfor %}
+    {% for libro in pagina %}{% include 'componentes/_registro_libro.html' %}{% endfor %}
 </ol>
+{% include 'componentes/_paginacion.html' %}
 {% else %}
 <div class="vacio mt-4">
     {% include 'componentes/_ilustracion_estante.html' %}
     <h2>No encontramos libros</h2>
-    <p>Prueba con otro término de búsqueda, otra categoría o quita el filtro de disponibilidad.</p>
+    <p>Prueba con otro término, otra categoría o quita el filtro de disponibilidad.</p>
     {% if query or categoria_id or disponible %}<a href="{% url 'catalogos:libro_list' %}" class="btn btn-outline-secondary btn-sm mt-2">Ver todo el catálogo</a>{% endif %}
 </div>
 {% endif %}
-{% endwith %}
 
 {% endblock %}

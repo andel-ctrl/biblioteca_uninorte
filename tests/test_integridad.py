@@ -85,6 +85,7 @@ class RutasYPermisosTest(BaseBiblioteca):
 
     def rutas_lector(self):
         return [
+            reverse('catalogos:inicio'),
             reverse('catalogos:libro_list'),
             reverse('catalogos:libro_detail', args=[self.libro.pk]),
             reverse('catalogos:autor_list'),
@@ -128,7 +129,7 @@ class RutasYPermisosTest(BaseBiblioteca):
     def test_home_redirige_segun_rol(self):
         self.assertRedirects(self.c_anon.get('/'), reverse('login'), fetch_redirect_response=False)
         self.assertRedirects(self.c_bib.get('/'), reverse('reportes:dashboard'), fetch_redirect_response=False)
-        self.assertRedirects(self.c_lec.get('/'), reverse('catalogos:libro_list'), fetch_redirect_response=False)
+        self.assertRedirects(self.c_lec.get('/'), reverse('catalogos:inicio'), fetch_redirect_response=False)
 
     def test_lector_accede_a_sus_rutas(self):
         for url in self.rutas_lector():
@@ -561,3 +562,73 @@ class AccesoTest(BaseBiblioteca):
     def test_login_lleva_el_next_de_la_url(self):
         r = self.c_anon.get(reverse('login'), {'next': '/usuarios/mi-historial/'})
         self.assertContains(r, 'name="next" value="/usuarios/mi-historial/"')
+
+
+# ---------------------------------------------------------------------------
+# 8. Inicio del lector y catálogo completo (paginación, orden, filtros)
+# ---------------------------------------------------------------------------
+class InicioYCatalogoTest(BaseBiblioteca):
+
+    def crear_libros(self, n):
+        for i in range(n):
+            Libro.objects.create(isbn=f'979-{i:04d}', titulo=f'Zeta {i:02d}', editorial='Ed',
+                                 anio_publicacion=1990 + i, categoria=self.categoria)
+
+    def test_inicio_muestra_saludo_y_estado_real(self):
+        self.prestamo(ejemplar=self.ej1, prestado_hace=20, vence_en=-3)   # vencido
+        self.prestamo(ejemplar=self.ej2, estado='pendiente')
+        Prestamo.actualizar_vencidos()
+        r = self.c_lec.get(reverse('catalogos:inicio'))
+        self.assertContains(r, 'Hola, <em>Luis</em>')
+        estado = r.context['estado']
+        self.assertEqual((len(estado['vencidos']), len(estado['pendientes']), len(estado['activos'])), (1, 1, 0))
+        self.assertEqual(estado['mora_total'], Decimal('1500'))
+        self.assertContains(r, 'action="' + reverse('catalogos:libro_list') + '"')  # la búsqueda va al catálogo real
+
+    def test_inicio_multas_pendientes(self):
+        p = self.prestamo(prestado_hace=20, vence_en=-2)
+        Devolucion.objects.create(prestamo=p, fecha_devolucion=timezone.localdate())
+        r = self.c_lec.get(reverse('catalogos:inicio'))
+        self.assertEqual(r.context['estado']['multas_total'], Decimal('1000.00'))
+
+    def test_novedades_por_fecha_real_de_ingreso(self):
+        self.crear_libros(3)
+        Libro.objects.filter(titulo='Zeta 00').update(creado_en=timezone.now() + datetime.timedelta(days=1))
+        novedades = self.c_lec.get(reverse('catalogos:inicio')).context['novedades']
+        self.assertEqual(novedades[0].titulo, 'Zeta 00')
+        self.assertLessEqual(len(novedades), 5)
+
+    def test_inicio_limita_la_seleccion(self):
+        self.crear_libros(30)
+        r = self.c_lec.get(reverse('catalogos:inicio'))
+        self.assertLessEqual(len(r.context['seleccion']), 20)
+        self.assertEqual(r.context['total_titulos'], 32)
+
+    def test_paginacion_conserva_filtros(self):
+        self.crear_libros(15)
+        url = reverse('catalogos:libro_list')
+        r = self.c_lec.get(url, {'categoria': self.categoria.pk, 'orden': 'anio'})
+        self.assertEqual(len(r.context['libros']), 12)
+        html = r.content.decode()
+        self.assertTrue(f'?categoria={self.categoria.pk}&amp;orden=anio&pagina=2' in html, 'el enlace a la página 2 no conserva los filtros')
+        r2 = self.c_lec.get(url, {'categoria': self.categoria.pk, 'orden': 'anio', 'pagina': 2})
+        self.assertEqual(len(r2.context['libros']), 4)  # 15 nuevos + 1 de la categoría
+
+    def test_ordenamientos(self):
+        self.crear_libros(3)
+        url = reverse('catalogos:libro_list')
+        anios = [l.anio_publicacion for l in self.c_lec.get(url, {'orden': 'anio'}).context['libros']]
+        self.assertEqual(anios, sorted(anios, reverse=True))
+        titulos = [l.titulo for l in self.c_lec.get(url, {'orden': 'titulo'}).context['libros']]
+        self.assertEqual(titulos, sorted(titulos))
+
+    def test_parametros_invalidos_no_rompen_el_catalogo(self):
+        url = reverse('catalogos:libro_list')
+        for params in [{'categoria': 'abc'}, {'orden': 'inexistente'}, {'pagina': '999'}, {'pagina': 'x'}]:
+            with self.subTest(params=params):
+                self.assertEqual(self.c_lec.get(url, params).status_code, 200)
+
+    def test_disponibilidad_anotada(self):
+        libros = {l.pk: l for l in self.c_lec.get(reverse('catalogos:libro_list')).context['libros']}
+        self.assertEqual((libros[self.libro.pk].n_disponibles, libros[self.libro.pk].n_ejemplares), (3, 3))
+        self.assertEqual(libros[self.libro_sin_stock.pk].n_disponibles, 0)

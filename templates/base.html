@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Biblioteca Universitaria{% endblock %}</title>
+    <script>document.documentElement.classList.add('js');</script>
     <!-- Todo se sirve desde el proyecto (static/vendor): la app no depende de internet -->
     <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-uni.svg' %}">
     <link rel="preload" href="{% static 'vendor/fonts/instrument-sans-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
@@ -113,7 +114,8 @@
                 <i class="bi bi-list" aria-hidden="true"></i> Menú
             </button>
             <nav class="barra__nav" aria-label="Navegación principal">
-                <a class="barra__enlace" href="{% url 'catalogos:libro_list' %}" {% if ns == 'catalogos' %}aria-current="page"{% endif %}><span class="cinta" aria-hidden="true"></span>Catálogo</a>
+                <a class="barra__enlace" href="{% url 'catalogos:inicio' %}" {% if vista == 'inicio' %}aria-current="page"{% endif %}><span class="cinta" aria-hidden="true"></span>Inicio</a>
+                <a class="barra__enlace" href="{% url 'catalogos:libro_list' %}" {% if ns == 'catalogos' and vista != 'inicio' %}aria-current="page"{% endif %}><span class="cinta" aria-hidden="true"></span>Catálogo</a>
                 {% if user.perfil %}
                 <a class="barra__enlace" href="{% url 'usuarios:mi_historial' %}" {% if vista == 'mi_historial' or ns == 'prestamos' %}aria-current="page"{% endif %}><span class="cinta" aria-hidden="true"></span>Mis préstamos</a>
                 {% endif %}

@@ -1,21 +1,46 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, Count, ProtectedError
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Sum, ProtectedError
 from .models import Libro, Ejemplar, Autor, Categoria
+from apps.prestamos.models import Prestamo, Devolucion
 from .forms import LibroForm, EjemplarForm, AutorForm
 from apps.usuarios.decorators import bibliotecario_required
 
 
 # ── Libros
 
+LIBROS_POR_PAGINA = 12
+
+# Ordenamientos disponibles en el catálogo: valor del parámetro -> (etiqueta, orden SQL)
+ORDENES = {
+    'titulo': ('Título (A–Z)', ['titulo']),
+    'recientes': ('Incorporados recientemente', ['-creado_en', 'titulo']),
+    'anio': ('Año de publicación (recientes)', ['-anio_publicacion', 'titulo']),
+}
+
+
+def libros_con_disponibilidad():
+    """Libros con sus conteos de ejemplares en una sola consulta (evita una consulta por libro)."""
+    return Libro.objects.select_related('categoria').prefetch_related('autores').annotate(
+        n_ejemplares=Count('ejemplares', distinct=True),
+        n_disponibles=Count('ejemplares', filter=Q(ejemplares__estado='disponible'), distinct=True),
+    )
+
+
 @login_required
 def libro_list(request):
-    query = request.GET.get('q', '')
+    query = request.GET.get('q', '').strip()
     categoria_id = request.GET.get('categoria', '')
     disponible = request.GET.get('disponible', '')
+    orden = request.GET.get('orden', 'titulo')
+    if orden not in ORDENES:
+        orden = 'titulo'
+    if not categoria_id.isdigit():  # evita error 500 con valores no numéricos en la URL
+        categoria_id = ''
 
-    libros = Libro.objects.prefetch_related('autores', 'ejemplares').select_related('categoria')
+    libros = libros_con_disponibilidad()
 
     if query:
         libros = libros.filter(
@@ -29,17 +54,71 @@ def libro_list(request):
         libros = libros.filter(categoria_id=categoria_id)
 
     if disponible == '1':
-        libros = libros.filter(ejemplares__estado='disponible').distinct()
+        libros = libros.filter(n_disponibles__gt=0)
 
-    categorias = Categoria.objects.all()
+    paginador = Paginator(libros.order_by(*ORDENES[orden][1]), LIBROS_POR_PAGINA)
+    pagina = paginador.get_page(request.GET.get('pagina'))
+
+    # Parámetros actuales sin la página: los enlaces de paginación conservan los filtros
+    filtros = request.GET.copy()
+    filtros.pop('pagina', None)
+
     context = {
-        'libros': libros,
-        'categorias': categorias,
+        'libros': pagina,
+        'pagina': pagina,
+        'paginador': paginador,
+        'numeros_pagina': list(paginador.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1)),
+        'filtros_url': filtros.urlencode(),
+        'categorias': Categoria.objects.all(),
         'query': query,
         'categoria_id': categoria_id,
         'disponible': disponible,
+        'orden': orden,
+        'ordenes': [(clave, etiqueta) for clave, (etiqueta, _) in ORDENES.items()],
     }
     return render(request, 'catalogos/libro_list.html', context)
+
+
+NOVEDADES = 5
+SELECCION = 20
+
+
+@login_required
+def inicio(request):
+    """Inicio del lector: bienvenida, búsqueda, su estado, novedades y una selección del catálogo."""
+    novedades = list(libros_con_disponibilidad().order_by('-creado_en')[:NOVEDADES])
+    total_titulos = Libro.objects.count()
+    seleccion = libros_con_disponibilidad().order_by('titulo')
+    if total_titulos > 12:  # con un catálogo pequeño se repiten las novedades para que la sección no quede vacía
+        seleccion = seleccion.exclude(pk__in=[l.pk for l in novedades])
+    seleccion = seleccion[:SELECCION]
+
+    estado = None
+    perfil = getattr(request.user, 'perfil', None)
+    if perfil is not None:
+        Prestamo.actualizar_vencidos()
+        mios = perfil.prestamos.select_related('ejemplar__libro').order_by('fecha_vencimiento', '-fecha_solicitud')
+        activos = [p for p in mios if p.estado == 'activo']
+        vencidos = [p for p in mios if p.estado == 'vencido']
+        pendientes = [p for p in mios if p.estado == 'pendiente']
+        multas = Devolucion.objects.filter(prestamo__usuario=perfil, monto_multa__gt=0, multa_pagada=False)
+        estado = {
+            'perfil': perfil,
+            'activos': activos,
+            'vencidos': vencidos,
+            'pendientes': pendientes,
+            'multas': list(multas.select_related('prestamo__ejemplar__libro')),
+            'multas_total': multas.aggregate(total=Sum('monto_multa'))['total'] or 0,
+            'mora_total': sum((p.multa_estimada() for p in vencidos), 0),
+        }
+
+    return render(request, 'catalogos/inicio.html', {
+        'novedades': novedades,
+        'seleccion': seleccion,
+        'total_titulos': total_titulos,
+        'categorias': Categoria.objects.all(),
+        'estado': estado,
+    })
 
 
 @login_required

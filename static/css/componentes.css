@@ -315,3 +315,50 @@
 .lomo--2, .lomo--7 { --lomo-fondo: var(--c-rosa); --lomo-texto: var(--c-borgona); }
 .lomo--3, .lomo--8 { --lomo-fondo: #3A3634; --lomo-texto: var(--c-dorado); }
 .lomo--4, .lomo--9 { --lomo-fondo: var(--c-hueso-oscuro); --lomo-texto: var(--c-tinta); }
+
+/* --- Buscador del catálogo completo (5 controles) ------------------------ */
+.buscador--catalogo { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    .buscador--catalogo { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+    .buscador--catalogo .buscador__campo { grid-column: 1 / -1; }
+    .buscador--catalogo .form-select { min-width: 0; }
+}
+
+/* --- Paginación ----------------------------------------------------------- */
+.paginacion { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; }
+.paginacion__numeros { display: flex; gap: 0.3rem; list-style: none; margin: 0; padding: 0; }
+.paginacion__num, .paginacion__elipsis {
+    min-width: 2.4rem; height: 2.4rem; display: inline-grid; place-items: center; padding: 0 0.5rem;
+    font-family: var(--f-mono); font-size: 0.85rem; color: var(--c-tinta); text-decoration: none;
+    border: 1px solid transparent; border-radius: var(--r-sm); transition: all var(--transicion);
+}
+a.paginacion__num:hover { border-color: var(--borde-fuerte); background: var(--c-papel); color: var(--c-borgona); }
+.paginacion__num[aria-current="page"] { background: var(--c-tinta); color: var(--c-hueso); }
+.paginacion__elipsis { color: var(--t-secundario); }
+.paginacion__paso { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: 0.9rem; color: var(--c-borgona); text-decoration: none; padding: 0.5rem 0.2rem; }
+.paginacion__paso:hover { color: var(--c-borgona-oscuro); }
+.paginacion__paso.is-inactivo { color: var(--t-terciario); opacity: 0.6; }
+@media (max-width: 575.98px) { .paginacion__numeros { order: 3; width: 100%; justify-content: center; } }
+
+/* --- Cabeza de sección dentro de una página ------------------------------ */
+.seccion-cabeza { margin-top: 4.5rem; }
+.seccion-cabeza .encabezado__ref { margin-bottom: 0.6rem; }
+.seccion-cabeza__titulo { font-size: clamp(2rem, 1.5rem + 1.6vw, 2.8rem); line-height: 1; margin: 0 0 0.75rem; font-weight: 400; letter-spacing: -0.03em; }
+.seccion-cabeza__titulo em { font-style: italic; color: var(--c-borgona); font-weight: 360; }
+
+/* --- Sello de ingreso: fecha real de incorporación al catálogo ----------- */
+.sello {
+    display: inline-block; margin: 0 0 0.9rem; padding: 0.28rem 0.6rem;
+    font-family: var(--f-mono); font-size: 0.64rem; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--c-borgona); border: 1.5px solid var(--c-borgona); outline: 1px solid var(--c-borgona); outline-offset: 2px;
+    border-radius: 2px; transform: rotate(-2.5deg); opacity: 0.88;
+}
+.sello--vertical {
+    writing-mode: vertical-rl; transform: rotate(180deg); margin: 0; padding: 0.4rem 0.15rem;
+    border: 0; outline: 0; color: var(--t-secundario); letter-spacing: 0.2em;
+    border-left: 1px solid var(--c-dorado);
+}
+
+/* --- Aparición al entrar en pantalla (solo si hay JavaScript) ------------- */
+.js .revelar { opacity: 0; transform: translateY(16px); transition: opacity 650ms ease, transform 650ms var(--transicion); transition-delay: calc(var(--i, 0) * 90ms); }
+.js .revelar.visible { opacity: 1; transform: none; }

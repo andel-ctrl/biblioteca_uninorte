@@ -1,0 +1,32 @@
+{% load biblioteca_ui %}
+{% comment %}
+Fila bibliográfica de un libro. Requiere un libro anotado con n_ejemplares y n_disponibles
+(ver catalogos.views.libros_con_disponibilidad).
+{% endcomment %}
+<li class="registro">
+    <div class="registro__portada">
+        {% if libro.portada %}
+        <img src="{{ libro.portada.url }}" alt="" loading="lazy">
+        {% else %}
+        <div class="lomo lomo--{{ libro.pk|stringformat:'d'|slice:'-1:' }}" aria-hidden="true">
+            <span class="lomo__inicial">{{ libro.titulo|first|upper }}</span>
+            <span class="lomo__anio">{{ libro.anio_publicacion }}</span>
+        </div>
+        {% endif %}
+    </div>
+    <div>
+        <div class="registro__ref">
+            {{ libro.categoria.nombre|default:"General" }}<span class="sep">/</span>{{ libro.anio_publicacion }}<span class="sep">/</span>ISBN {{ libro.isbn }}
+        </div>
+        <h3 class="registro__titulo"><a href="{% url 'catalogos:libro_detail' libro.pk %}">{{ libro.titulo }}</a></h3>
+        <div class="registro__autores">
+            {% if libro.autores.all %}{{ libro.autores.all|join:"; " }}{% else %}Autor no especificado{% endif %}
+            <span class="registro__editorial">— {{ libro.editorial }}</span>
+        </div>
+    </div>
+    <div class="registro__lateral">
+        {% if libro.n_disponibles %}{% estado 'disponible' 'libro' %}{% else %}{% estado 'agotado' 'libro' %}{% endif %}
+        <span class="registro__copias">{{ libro.n_disponibles }} de {{ libro.n_ejemplares }} ejemplar{{ libro.n_ejemplares|pluralize:"es" }}</span>
+        <a class="registro__ir" href="{% url 'catalogos:libro_detail' libro.pk %}" tabindex="-1" aria-hidden="true">Ver ficha <i class="bi bi-arrow-right"></i></a>
+    </div>
+</li>
