@@ -715,3 +715,35 @@ tr:nth-child(1) .ranking__puesto--chico { color: var(--c-borgona); font-style: i
     .ficha-catalogo { padding: 0.9rem 1rem 1.4rem; }
     .ficha-catalogo__datos > div { grid-template-columns: 4.6rem minmax(0, 1fr); }
 }
+
+/* ==========================================================================
+   LOGO VIVO (inicio de sesión) · el libro se abre, suben las columnas, emergen
+   las letras, se dibuja la cúpula y la estrella aparece con un destello
+   Con movimiento reducido (base.css) todo queda de inmediato en su forma final.
+   ========================================================================== */
+.logo-vivo { overflow: visible; }
+.logo-vivo path { transform-box: fill-box; transform-origin: 50% 100%; }
+.logo-vivo__libro    { animation: logo-sube 620ms cubic-bezier(.3, 1.35, .5, 1) calc(120ms + var(--i) * 90ms) both; }
+.logo-vivo__columna  { animation: logo-sube 560ms cubic-bezier(.3, 1.35, .5, 1) calc(420ms + var(--i) * 110ms) both; }
+.logo-vivo__letra    { animation: logo-emerge 620ms cubic-bezier(.2, .8, .2, 1) 760ms both; }
+.logo-vivo__cupula   { animation: logo-emerge 760ms cubic-bezier(.4, 0, .2, 1) 1060ms both; }
+.logo-vivo__estrella { transform-origin: 50% 50%;
+    animation: logo-destello 900ms cubic-bezier(.2, 1.4, .4, 1) 1650ms both, logo-titila 5s ease-in-out 3.2s infinite; }
+
+@keyframes logo-sube {
+    from { opacity: 0; transform: translateY(18%) scaleY(0.15); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes logo-emerge {
+    from { clip-path: inset(100% -5% -5% -5%); }
+    to   { clip-path: inset(-5% -5% -5% -5%); }
+}
+@keyframes logo-destello {
+    0%   { opacity: 0; transform: scale(0) rotate(-120deg); }
+    55%  { opacity: 1; transform: scale(1.45) rotate(12deg); filter: drop-shadow(0 0 14px rgba(255, 236, 200, 0.95)); }
+    100% { opacity: 1; transform: none; filter: drop-shadow(0 0 0 rgba(255, 236, 200, 0)); }
+}
+@keyframes logo-titila {
+    0%, 86%, 100% { transform: none; filter: none; }
+    92% { transform: scale(1.18) rotate(8deg); filter: drop-shadow(0 0 10px rgba(255, 236, 200, 0.85)); }
+}

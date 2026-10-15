@@ -2,6 +2,21 @@
 (function () {
     'use strict';
 
+    // Botón en espera: un librito que pasa sus páginas mientras el servidor responde
+    function marcarCargando(boton, activo) {
+        boton.classList.toggle('is-cargando', activo);
+        if (activo) {
+            boton.setAttribute('aria-busy', 'true');
+            if (!boton.querySelector('.libro-carga')) {
+                boton.insertAdjacentHTML('afterbegin', '<span class="libro-carga" aria-hidden="true"><i></i><i></i><i></i></span>');
+            }
+        } else {
+            boton.removeAttribute('aria-busy');
+            var libro = boton.querySelector('.libro-carga');
+            if (libro) libro.remove();
+        }
+    }
+
     // Cerrar avisos del sistema
     document.addEventListener('click', function (e) {
         var boton = e.target.closest('[data-cerrar-aviso]');
@@ -135,6 +150,7 @@
             datos.append('apellido', campoApellido.value.trim());
             datos.append('biografia', '');
             boton.disabled = true;
+            marcarCargando(boton, true);
             mensaje.className = 'selector-autores__mensaje';
             mensaje.textContent = 'Guardando…';
             fetch(nuevo.getAttribute('data-url'), {
@@ -168,7 +184,7 @@
             }).catch(function () {
                 mensaje.classList.add('es-error');
                 mensaje.textContent = 'No se pudo guardar el autor. Revisa tu conexión e inténtalo de nuevo.';
-            }).finally(function () { boton.disabled = false; });
+            }).finally(function () { boton.disabled = false; marcarCargando(boton, false); });
         };
         boton.addEventListener('click', crearAutor);
         [campoNombre, campoApellido].forEach(function (c) {
@@ -196,5 +212,22 @@
             e.preventDefault();
             e.returnValue = '';  // el navegador muestra su propio mensaje de confirmación
         });
+    });
+
+    // Formularios que guardan (POST): animación en el botón y sin doble envío.
+    // Cerrar sesión es instantáneo y se excluye; data-sin-carga permite excluir otros.
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (e.defaultPrevented || (form.method || '').toLowerCase() !== 'post' || form.matches('.form-salir, [data-sin-carga]')) return;
+        if (form.dataset.enviando) { e.preventDefault(); return; }
+        form.dataset.enviando = '1';
+        var boton = e.submitter || form.querySelector('[type=submit]');
+        if (boton) marcarCargando(boton, true);
+    });
+    // Al volver con «Atrás» el navegador puede restaurar la página tal cual: se reactivan los botones
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        document.querySelectorAll('form[data-enviando]').forEach(function (f) { delete f.dataset.enviando; });
+        document.querySelectorAll('.is-cargando').forEach(function (b) { marcarCargando(b, false); });
     });
 })();
