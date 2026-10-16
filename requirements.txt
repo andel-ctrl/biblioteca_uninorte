@@ -1,5 +1,10 @@
-Django>=5.0
-psycopg2-binary>=2.9
-python-dotenv>=1.0
-whitenoise>=6.0
+# Requiere Python 3.10 o superior.
+# pip elige la versión de Django según el Python instalado:
+#   Python 3.12 o superior -> Django 6
+#   Python 3.10 u 3.11     -> Django 5.2 (versión de soporte largo)
+# El proyecto está probado con Django 5.2 y 6.1.
+Django>=5.2,<7.0
+psycopg2-binary>=2.9,<3.0
+python-dotenv>=1.0,<2.0
+whitenoise>=6.0,<7.0
 pillow>=10.0

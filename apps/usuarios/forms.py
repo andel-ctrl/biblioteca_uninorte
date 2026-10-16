@@ -55,11 +55,12 @@ class UsuarioForm(forms.ModelForm):
         self.fields['first_name'].initial = user.first_name
         self.fields['last_name'].initial = user.last_name
         self.fields['email'].initial = user.email
-        # El rol ofrece solo opciones del mismo subtipo
+        # Solo se muestran los campos que aplican a su subtipo. El tipo no cambia al editar.
         if self.instance.es_bibliotecario():
-            self.fields['rol'].choices = [('bibliotecario', 'Bibliotecario')]
-            self.fields['rol'].initial = 'bibliotecario'
-            del self.fields['carrera']  # la carrera es del lector
+            # rol: tendría una sola opción posible; carrera: es del lector;
+            # estado: bloquear solo impide pedir préstamos, y un bibliotecario no los pide
+            for campo in ('rol', 'carrera', 'estado'):
+                del self.fields[campo]
             self.fields['turno'].initial = self.instance.bibliotecario.turno
         else:
             self.fields['rol'].choices = Lector.ROL_CHOICES
@@ -118,12 +119,12 @@ class RegistroForm(forms.Form):
     username = forms.CharField(max_length=150, label='Usuario', widget=forms.TextInput(attrs={'class': 'form-control'}))
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'}), label='Contraseña')
     codigo_universitario = forms.CharField(max_length=20, label='Código universitario', widget=forms.TextInput(attrs={'class': 'form-control'}))
-    identificacion = forms.CharField(max_length=20, label='Identificación', widget=forms.TextInput(attrs={'class': 'form-control'}))
+    identificacion = forms.CharField(max_length=20, label='Número de identificación', widget=forms.TextInput(attrs={'class': 'form-control'}))
     rol = forms.ChoiceField(choices=ROL_CHOICES, label='Rol', widget=forms.Select(attrs={'class': 'form-select'}),
                             help_text='Estudiante o docente: lector, puede pedir libros. Bibliotecario: aprueba y registra préstamos.')
-    carrera = forms.CharField(max_length=150, required=False, label='Carrera', help_text='Solo para lectores.',
+    carrera = forms.CharField(max_length=150, required=False, label='Carrera', help_text='Opcional.',
                               widget=forms.TextInput(attrs={'class': 'form-control'}))
-    turno = forms.ChoiceField(choices=TURNO_OPCIONES, required=False, label='Turno', help_text='Solo para bibliotecarios.',
+    turno = forms.ChoiceField(choices=TURNO_OPCIONES, required=False, label='Turno', help_text='Opcional.',
                               widget=forms.Select(attrs={'class': 'form-select'}))
     estado = forms.ChoiceField(choices=Usuario.ESTADO_CHOICES, initial='activo', label='Estado', widget=forms.Select(attrs={'class': 'form-select'}))
     telefono = forms.CharField(max_length=20, required=False, label='Teléfono', widget=forms.TextInput(attrs={'class': 'form-control'}))
@@ -154,6 +155,12 @@ class RegistroForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        # Lo que no aplica al rol elegido se descarta (por si llega sin pasar por la pantalla)
+        if cleaned.get('rol') == 'bibliotecario':
+            cleaned['carrera'] = ''
+            cleaned['estado'] = 'activo'  # el estado solo afecta a quien pide préstamos
+        else:
+            cleaned['turno'] = ''
         password = cleaned.get('password')
         if password:
             # Valida contra los AUTH_PASSWORD_VALIDATORS de settings (longitud, comunes, solo números, parecida al usuario)

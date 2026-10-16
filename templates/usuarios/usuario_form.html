@@ -9,9 +9,47 @@
 <ul>
     <li>El <strong>código</strong>, la <strong>identificación</strong>, el <strong>usuario</strong> y el <strong>correo</strong> no pueden repetirse.</li>
     <li>La contraseña debe tener al menos 8 caracteres, no ser común ni solo números.</li>
-    <li>Un usuario <strong>bloqueado</strong> puede entrar y ver el catálogo, pero no solicitar préstamos.</li>
+    <li>Según el <strong>rol</strong> aparecen los campos que aplican: carrera y estado para lectores, turno para bibliotecarios.</li>
+    <li>Un lector <strong>bloqueado</strong> puede entrar y ver el catálogo, pero no solicitar préstamos.</li>
     {% if usuario %}<li>Deja la nueva contraseña vacía para conservar la actual.</li>{% endif %}
 </ul>
+{% endblock %}
+
+{% block campos %}
+{% comment %}
+Campos agrupados por sección. Los que dependen del rol van en un contenedor «condicional»:
+carrera y estado solo para lectores, turno solo para bibliotecarios. Al cambiar el rol se
+despliegan o se pliegan (biblioteca.js). Sin JavaScript se ven todos y el servidor descarta
+los que no aplican. Al editar, el servidor ya quita los que no corresponden al subtipo.
+{% endcomment %}
+<p class="formulario__seccion">Tipo de usuario</p>
+{% if form.rol %}
+{% include 'componentes/_campo.html' with field=form.rol %}
+{% else %}
+<div class="campo">
+    <span class="form-label">Rol</span>
+    <p class="campo__fijo">Bibliotecario</p>
+    <div class="form-text">El tipo de usuario no se cambia al editar.</div>
+</div>
+{% endif %}
+
+<p class="formulario__seccion">Datos personales</p>
+{% include 'componentes/_campo.html' with field=form.first_name %}
+{% include 'componentes/_campo.html' with field=form.last_name %}
+{% include 'componentes/_campo.html' with field=form.identificacion %}
+{% include 'componentes/_campo.html' with field=form.telefono %}
+{% include 'componentes/_campo.html' with field=form.email %}
+
+<p class="formulario__seccion">En la biblioteca</p>
+{% include 'componentes/_campo.html' with field=form.codigo_universitario %}
+{% if form.estado %}<div class="condicional" data-solo-para="lector">{% include 'componentes/_campo.html' with field=form.estado %}</div>{% endif %}
+{% if form.turno %}<div class="condicional" data-solo-para="bibliotecario">{% include 'componentes/_campo.html' with field=form.turno %}</div>{% endif %}
+{% if form.carrera %}<div class="condicional campo--ancho" data-solo-para="lector">{% include 'componentes/_campo.html' with field=form.carrera %}</div>{% endif %}
+
+<p class="formulario__seccion">Cuenta de acceso</p>
+{% if form.username %}{% include 'componentes/_campo.html' with field=form.username %}{% endif %}
+{% if form.password %}{% include 'componentes/_campo.html' with field=form.password %}{% endif %}
+{% if form.nueva_password %}{% include 'componentes/_campo.html' with field=form.nueva_password %}{% endif %}
 {% endblock %}
 
 {% block boton %}{% if usuario %}Guardar cambios{% else %}Crear usuario{% endif %}{% endblock %}

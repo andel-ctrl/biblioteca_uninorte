@@ -419,6 +419,14 @@ a.paginacion__num:hover { border-color: var(--borde-fuerte); background: var(--c
 .campo textarea { min-height: 7rem; }
 .formulario__seccion { grid-column: 1 / -1; margin: 0.5rem 0 -0.25rem; padding-top: 1rem; border-top: 1px solid var(--borde);
     font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-borgona); }
+.campos > .formulario__seccion:first-child { margin-top: 0; padding-top: 0; border-top: 0; }  /* el formulario ya trae su línea */
+/* Campos que dependen de otro (p. ej. del rol): se despliegan o se pliegan sin saltos */
+.condicional { display: grid; grid-template-rows: 1fr; opacity: 1;
+    transition: grid-template-rows 320ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 220ms ease; }
+.condicional > .campo { min-height: 0; overflow: hidden; padding: 4px; margin: -4px; }  /* el margen deja ver el foco */
+.condicional.is-plegado { grid-template-rows: 0fr; opacity: 0; }
+.condicional[hidden] { display: none; }
+.campo__fijo { margin: 0.35rem 0 0; font-weight: 600; color: var(--c-tinta); }
 .formulario__acciones { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--borde); }
 .formulario__vista-previa { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
 .formulario__vista-previa img { width: 72px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 2px; box-shadow: var(--sombra-ficha); }

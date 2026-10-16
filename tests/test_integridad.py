@@ -502,10 +502,12 @@ class UsuariosTest(BaseBiblioteca):
         self.assertIsNone(authenticate(username='lector', password=CLAVE))
 
     def test_bibliotecario_no_se_bloquea_ni_se_quita_el_rol_ni_se_elimina(self):
-        for cambio, campo in [({'estado': 'bloqueado'}, 'estado'), ({'rol': 'estudiante'}, 'rol')]:
-            with self.subTest(cambio=cambio):
-                r = self.c_bib.post(reverse('usuarios:usuario_edit', args=[self.bib.pk]), self.datos_edicion(self.bib, **cambio))
-                self.assertTrue(r.context['form'].errors.get(campo))
+        # Al editar a un bibliotecario no se ofrecen rol ni estado; si llegan en el envío, se ignoran
+        form = self.c_bib.get(reverse('usuarios:usuario_edit', args=[self.bib.pk])).context['form']
+        self.assertNotIn('rol', form.fields)
+        self.assertNotIn('estado', form.fields)
+        self.c_bib.post(reverse('usuarios:usuario_edit', args=[self.bib.pk]),
+                        self.datos_edicion(self.bib, estado='bloqueado', rol='estudiante'))
         r = self.c_bib.post(reverse('usuarios:usuario_delete', args=[self.bib.pk]), follow=True)
         self.assertContains(r, 'No puedes eliminar tu propia cuenta')
         self.bib.refresh_from_db()
@@ -1428,3 +1430,45 @@ class AccesoSoloBibliotecarioTest(BaseBiblioteca):
 
     def test_el_bibliotecario_si_entra(self):
         self.assertEqual(self.c_bib.get(reverse('usuarios:usuario_list')).status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# Formulario de usuario: solo los campos que aplican según el rol
+# ---------------------------------------------------------------------------
+class FormularioUsuarioPorRolTest(BaseBiblioteca):
+    def datos(self, **cambios):
+        datos = {'first_name': 'Nuevo', 'last_name': 'Usuario', 'email': 'nuevo@uni.edu', 'username': 'nuevo', 'password': CLAVE,
+                 'codigo_universitario': 'N-1', 'identificacion': '501', 'rol': 'estudiante', 'carrera': '', 'turno': '',
+                 'estado': 'activo', 'telefono': ''}
+        datos.update(cambios)
+        return datos
+
+    def test_alta_marca_los_campos_que_dependen_del_rol(self):
+        html = self.c_bib.get(reverse('usuarios:usuario_create')).content.decode()
+        for seccion in ('Tipo de usuario', 'Datos personales', 'En la biblioteca', 'Cuenta de acceso'):
+            self.assertIn(seccion, html)
+        self.assertRegex(html, r'data-solo-para="lector">\s*<div class="campo[^"]*">\s*<label[^>]*for="id_estado"')
+        self.assertRegex(html, r'data-solo-para="bibliotecario">\s*<div class="campo[^"]*">\s*<label[^>]*for="id_turno"')
+        self.assertRegex(html, r'data-solo-para="lector">\s*<div class="campo[^"]*">\s*<label[^>]*for="id_carrera"')
+        # el rol va primero: decide qué campos aplican
+        self.assertLess(html.index('name="rol"'), html.index('name="first_name"'))
+
+    def test_bibliotecario_nuevo_siempre_activo_y_sin_carrera(self):
+        self.c_bib.post(reverse('usuarios:usuario_create'), self.datos(rol='bibliotecario', estado='bloqueado',
+                                                                         carrera='No aplica', turno='tarde'))
+        u = Usuario.objects.get(codigo_universitario='N-1')
+        self.assertEqual((u.tipo, u.estado, u.carrera, u.bibliotecario.turno), ('bibliotecario', 'activo', '', 'tarde'))
+
+    def test_lector_nuevo_ignora_el_turno(self):
+        self.c_bib.post(reverse('usuarios:usuario_create'), self.datos(rol='docente', carrera='Derecho', turno='noche',
+                                                                         estado='bloqueado'))
+        u = Usuario.objects.get(codigo_universitario='N-1')
+        self.assertEqual((u.tipo, u.estado, u.lector.rol, u.lector.carrera), ('lector', 'bloqueado', 'docente', 'Derecho'))
+        self.assertFalse(Bibliotecario.objects.filter(pk=u.pk).exists())
+
+    def test_edicion_del_bibliotecario_muestra_el_rol_como_texto(self):
+        r = self.c_bib.get(reverse('usuarios:usuario_edit', args=[self.bib.pk]))
+        self.assertContains(r, 'El tipo de usuario no se cambia al editar.')
+        self.assertNotContains(r, 'name="rol"')
+        self.assertNotContains(r, 'name="estado"')
+        self.assertContains(r, 'name="turno"')

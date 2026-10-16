@@ -231,6 +231,38 @@
         document.querySelectorAll('.is-cargando').forEach(function (b) { marcarCargando(b, false); });
     });
 
+    // Formulario de usuario: según el rol se despliegan los campos que aplican
+    // (carrera y estado para lectores, turno para bibliotecarios) y se pliegan los demás
+    var selectorRol = document.getElementById('id_rol');
+    var condicionales = document.querySelectorAll('[data-solo-para]');
+    if (selectorRol && condicionales.length) {
+        var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var mostrarCampo = function (caja, ver, animar) {
+            caja.inert = !ver;  // plegado: no recibe foco ni lo lee el lector de pantalla
+            if (!animar || reducido) {
+                caja.classList.toggle('is-plegado', !ver);
+                caja.hidden = !ver;
+                return;
+            }
+            if (ver) {
+                caja.hidden = false;
+                void caja.offsetHeight;  // primero aparece plegado, luego se despliega
+                caja.classList.remove('is-plegado');
+            } else {
+                caja.classList.add('is-plegado');
+                var ocultar = function () { if (caja.classList.contains('is-plegado')) caja.hidden = true; };
+                caja.addEventListener('transitionend', ocultar, { once: true });
+                setTimeout(ocultar, 400);  // por si el navegador no avisa el fin de la transición
+            }
+        };
+        var aplicarRol = function (animar) {
+            var tipo = selectorRol.value === 'bibliotecario' ? 'bibliotecario' : 'lector';
+            condicionales.forEach(function (caja) { mostrarCampo(caja, caja.dataset.soloPara === tipo, animar); });
+        };
+        selectorRol.addEventListener('change', function () { aplicarRol(true); });
+        aplicarRol(false);
+    }
+
     // Devolución: la multa se recalcula con la fecha elegida y la casilla de pago solo aparece si hay multa
     var panelMulta = document.querySelector('[data-multa-estimada]');
     var campoFecha = document.getElementById('id_fecha_devolucion');
