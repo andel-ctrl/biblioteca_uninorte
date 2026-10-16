@@ -17,14 +17,23 @@
         <p class="acceso__credito">Biblioteca Karl C. Parrish Jr.</p>
     </section>
 
-    <!-- Líneas que serpentean en el lado claro: dejan una estrella y se desvanecen (decorativo) -->
+    <!-- Líneas que serpentean en el lado claro: la línea corre por su camino, se interrumpe con un
+         pequeño espacio, deja ver una estrella que gira en su lugar y continúa (decorativo) -->
     <div class="acceso__lineas" aria-hidden="true">
         <svg viewBox="0 0 600 1000" preserveAspectRatio="xMidYMid slice" focusable="false">
-            <g class="trazo trazo--borgona" style="--retraso: 0s"><path class="trazo__linea" pathLength="1" d="M-40 140 C110 40 200 300 300 230 C400 160 470 20 640 120"/><path class="trazo__estrella" transform="translate(289 219) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
-            <g class="trazo trazo--dorado" style="--retraso: 2.2s"><path class="trazo__linea" pathLength="1" d="M-40 470 C80 380 220 600 330 520 C440 440 520 640 640 560"/><path class="trazo__estrella" transform="translate(319 509) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
-            <g class="trazo trazo--rosa" style="--retraso: 4.4s"><path class="trazo__linea" pathLength="1" d="M640 300 C520 260 470 430 360 400 C250 370 150 280 -40 340"/><path class="trazo__estrella" transform="translate(349 389) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
-            <g class="trazo trazo--tinta" style="--retraso: 6.6s"><path class="trazo__linea" pathLength="1" d="M-40 820 C120 760 180 930 300 860 C420 790 520 900 640 830"/><path class="trazo__estrella" transform="translate(289 849) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
-            <g class="trazo trazo--borgona" style="--retraso: 8.8s"><path class="trazo__linea" pathLength="1" d="M640 690 C540 650 520 760 420 740 C320 720 230 640 -40 700"/><path class="trazo__estrella" transform="translate(409 729) scale(0.92)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g>
+            <!-- cada máscara abre un hueco en la línea alrededor de su estrella -->
+            <defs>
+                <mask id="hueco-1" maskUnits="userSpaceOnUse" x="-100" y="-100" width="800" height="1200"><rect x="-100" y="-100" width="800" height="1200" fill="#fff"/><circle cx="300" cy="230" r="21" fill="#000"/></mask>
+                <mask id="hueco-2" maskUnits="userSpaceOnUse" x="-100" y="-100" width="800" height="1200"><rect x="-100" y="-100" width="800" height="1200" fill="#fff"/><circle cx="330" cy="520" r="21" fill="#000"/></mask>
+                <mask id="hueco-3" maskUnits="userSpaceOnUse" x="-100" y="-100" width="800" height="1200"><rect x="-100" y="-100" width="800" height="1200" fill="#fff"/><circle cx="360" cy="400" r="21" fill="#000"/></mask>
+                <mask id="hueco-4" maskUnits="userSpaceOnUse" x="-100" y="-100" width="800" height="1200"><rect x="-100" y="-100" width="800" height="1200" fill="#fff"/><circle cx="300" cy="860" r="21" fill="#000"/></mask>
+                <mask id="hueco-5" maskUnits="userSpaceOnUse" x="-100" y="-100" width="800" height="1200"><rect x="-100" y="-100" width="800" height="1200" fill="#fff"/><circle cx="420" cy="740" r="21" fill="#000"/></mask>
+            </defs>
+            <g class="trazo trazo--borgona" style="--retraso: -2s"><path class="trazo__linea" pathLength="1" mask="url(#hueco-1)" d="M-40 140 C110 40 200 300 300 230 C400 160 470 20 640 120"/><g transform="translate(300 230)"><g class="trazo__estrella"><path transform="scale(0.92) translate(-12 -12)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g></g></g>
+            <g class="trazo trazo--dorado" style="--retraso: -4.2s"><path class="trazo__linea" pathLength="1" mask="url(#hueco-2)" d="M-40 470 C80 380 220 600 330 520 C440 440 520 640 640 560"/><g transform="translate(330 520)"><g class="trazo__estrella"><path transform="scale(0.92) translate(-12 -12)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g></g></g>
+            <g class="trazo trazo--rosa" style="--retraso: -6.4s"><path class="trazo__linea" pathLength="1" mask="url(#hueco-3)" d="M640 300 C520 260 470 430 360 400 C250 370 150 280 -40 340"/><g transform="translate(360 400)"><g class="trazo__estrella"><path transform="scale(0.92) translate(-12 -12)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g></g></g>
+            <g class="trazo trazo--tinta" style="--retraso: -8.6s"><path class="trazo__linea" pathLength="1" mask="url(#hueco-4)" d="M-40 820 C120 760 180 930 300 860 C420 790 520 900 640 830"/><g transform="translate(300 860)"><g class="trazo__estrella"><path transform="scale(0.92) translate(-12 -12)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g></g></g>
+            <g class="trazo trazo--borgona" style="--retraso: -10.8s"><path class="trazo__linea" pathLength="1" mask="url(#hueco-5)" d="M640 690 C540 650 520 760 420 740 C320 720 230 640 -40 700"/><g transform="translate(420 740)"><g class="trazo__estrella"><path transform="scale(0.92) translate(-12 -12)" d="M12 0 C12.6 6.2 13.6 8.6 24 12 C13.6 15.4 12.6 17.8 12 24 C11.4 17.8 10.4 15.4 0 12 C10.4 8.6 11.4 6.2 12 0 Z"/></g></g></g>
         </svg>
     </div>
 

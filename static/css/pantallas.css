@@ -626,8 +626,10 @@ tr:nth-child(1) .ranking__puesto--chico { color: var(--c-borgona); font-style: i
 .detalle-prestamo .historial__fila { grid-template-columns: 5.5rem minmax(0, 1fr) auto; }
 .detalle-prestamo .historial__multa { grid-column: 2 / -1; justify-content: flex-start; margin-top: -0.4rem; }
 
-/* Líneas que serpentean en el lado claro del login: un tramo recorre el camino,
-   deja una estrella al pasar y todo se desvanece. Cinco trazos desfasados. */
+/* Líneas que serpentean en el lado claro del login: un tramo corre por el camino, se interrumpe
+   con un pequeño espacio alrededor de su estrella (máscara del SVG) y continúa. Las estrellas
+   están siempre en su lugar, girando sobre su centro. Los retrasos son negativos: al cargar la
+   página cada trazo ya va en un punto distinto de su recorrido, no empiezan todos desde cero. */
 .acceso__lineas { grid-column: 2; grid-row: 1; position: relative; overflow: hidden; z-index: 0; pointer-events: none; }
 .acceso__lineas svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .trazo { --dur: 11s; --color: var(--c-borgona); }
@@ -639,23 +641,17 @@ tr:nth-child(1) .ranking__puesto--chico { color: var(--c-borgona); font-style: i
     stroke-dasharray: 0.3 1.3; stroke-dashoffset: 0.3;
     animation: trazo-serpentea var(--dur) linear var(--retraso, 0s) infinite;
 }
-.trazo__estrella {
-    fill: var(--c-dorado); opacity: 0; transform-box: fill-box; transform-origin: center;
-    animation: trazo-estrella var(--dur) ease-out var(--retraso, 0s) infinite;
-}
 @keyframes trazo-serpentea {
     0%   { stroke-dashoffset: 0.3; opacity: 0; }
     6%   { opacity: 0.55; }
     70%  { stroke-dashoffset: -1; opacity: 0.55; }
     100% { stroke-dashoffset: -1; opacity: 0; }
 }
-@keyframes trazo-estrella { /* aparece cuando la cabeza del trazo pasa por el centro del camino */
-    0%, 25% { opacity: 0; scale: 0.2; rotate: -45deg; }
-    29%     { opacity: 1; scale: 1.25; rotate: 0deg; }
-    33%     { scale: 1; }
-    72%     { opacity: 0.9; }
-    92%, 100% { opacity: 0; scale: 1; }
-}
+/* El grupo de la estrella ya está trasladado a su punto del camino: girar sobre (0, 0) es girar sobre su centro */
+.trazo__estrella { fill: var(--c-dorado); opacity: 0.9; transform-box: view-box; transform-origin: 0 0;
+    animation: trazo-estrella-gira 16s linear infinite; }
+.trazo:nth-of-type(even) .trazo__estrella { animation-direction: reverse; animation-duration: 20s; }
+@keyframes trazo-estrella-gira { to { rotate: 360deg; } }
 @media (prefers-reduced-motion: reduce) {
     .trazo__linea { animation: none; stroke-dasharray: none; opacity: 0.18; }
     .trazo__estrella { animation: none; opacity: 0.6; }
