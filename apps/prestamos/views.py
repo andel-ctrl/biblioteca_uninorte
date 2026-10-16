@@ -4,12 +4,17 @@ from django.contrib import messages
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import transaction
-from .models import Prestamo, Devolucion, ConfiguracionMulta
+from .models import Prestamo, Devolucion, TarifaMulta
 from .forms import AprobarPrestamoForm, AmpliarPlazoForm, DevolucionForm, TarifaMultaForm
 from apps.catalogos.models import Ejemplar
-from apps.usuarios.models import UsuarioBiblioteca
-from apps.usuarios.decorators import bibliotecario_required, es_bibliotecario_o_staff
+from apps.usuarios.decorators import bibliotecario_required, es_bibliotecario
 from apps.catalogos.formato import formato_pesos
+
+
+def _bibliotecario(request):
+    """El bibliotecario de la sesión (subtipo), o None para un superusuario sin ficha de biblioteca."""
+    perfil = getattr(request.user, 'perfil', None)
+    return getattr(perfil, 'bibliotecario', None) if perfil else None
 
 
 # Solicitar prestamo
@@ -24,25 +29,26 @@ def prestamo_solicitar(request, ejemplar_pk):
         messages.error(request, 'Este ejemplar no está disponible.')
         return redirect('catalogos:libro_detail', pk=ejemplar.libro.pk)
 
-    try:
-        perfil = request.user.perfil
-    except UsuarioBiblioteca.DoesNotExist:
+    perfil = getattr(request.user, 'perfil', None)
+    if perfil is None:
         messages.error(request, 'No tienes perfil de biblioteca activo para solicitar libros.')
         return redirect('catalogos:libro_list')
 
-    # Cuenta bloqueada, préstamos vencidos o multas sin pagar: primero ponerse al día
+    # Solo un lector solicita (el bibliotecario aprueba); y debe estar al día:
+    # cuenta activa, sin préstamos vencidos ni multas sin pagar
     restriccion = perfil.mensaje_restriccion()
     if restriccion:
         messages.error(request, restriccion)
         return redirect('catalogos:libro_detail', pk=ejemplar.libro.pk)
 
     # Verificar que no tenga ya ese ejemplar solicitado o activo
-    if Prestamo.objects.filter(usuario=perfil, ejemplar=ejemplar, estado__in=['pendiente', 'activo', 'vencido']).exists():
+    lector = perfil.lector
+    if Prestamo.objects.filter(lector=lector, ejemplar=ejemplar, estado__in=['pendiente', 'activo', 'vencido']).exists():
         messages.warning(request, 'Ya tienes una solicitud o préstamo activo para este ejemplar.')
         return redirect('catalogos:libro_detail', pk=ejemplar.libro.pk)
 
     if request.method == 'POST':
-        prestamo = Prestamo.objects.create(usuario=perfil, ejemplar=ejemplar)
+        Prestamo.objects.create(lector=lector, ejemplar=ejemplar)
         messages.success(request, 'Solicitud de préstamo enviada. Espera la aprobación del bibliotecario.')
         return redirect('usuarios:mi_historial')
 
@@ -56,7 +62,7 @@ def prestamo_list(request):
     estado = request.GET.get('estado', '')
     Prestamo.actualizar_vencidos()
     prestamos = Prestamo.objects.select_related(
-        'usuario__user', 'ejemplar__libro', 'aprobado_por__user'
+        'lector__usuario__user', 'ejemplar__libro', 'aprobado_por__usuario__user'
     ).order_by('-fecha_solicitud')
 
     if estado:
@@ -73,8 +79,8 @@ def prestamo_list(request):
 def prestamo_detail(request, pk):
     prestamo = get_object_or_404(Prestamo, pk=pk)
     # Si no es bibliotecario ni staff, solo puede ver su propio préstamo
-    if not es_bibliotecario_o_staff(request.user):
-        if not hasattr(request.user, 'perfil') or prestamo.usuario != request.user.perfil:
+    if not es_bibliotecario(request.user):
+        if not hasattr(request.user, 'perfil') or prestamo.lector_id != request.user.perfil.pk:
             messages.error(request, 'No tienes permiso para ver este préstamo.')
             return redirect('usuarios:mi_historial')
     return render(request, 'prestamos/prestamo_detail.html', {'prestamo': prestamo})
@@ -103,11 +109,7 @@ def prestamo_aprobar(request, pk):
         form = AprobarPrestamoForm(request.POST)
         if form.is_valid():
             try:
-                perfil = request.user.perfil
-            except UsuarioBiblioteca.DoesNotExist:
-                perfil = None
-            try:
-                otras = prestamo.aprobar(perfil, form.cleaned_data['fecha_vencimiento'])
+                otras = prestamo.aprobar(_bibliotecario(request), form.cleaned_data['fecha_vencimiento'])
             except ValueError as e:
                 messages.error(request, str(e))
                 return redirect('prestamos:prestamo_list')
@@ -141,12 +143,8 @@ def prestamo_ampliar(request, pk):
     if request.method == 'POST':
         form = AmpliarPlazoForm(request.POST, prestamo=prestamo)
         if form.is_valid():
-            try:
-                perfil = request.user.perfil
-            except UsuarioBiblioteca.DoesNotExist:
-                perfil = None
             anterior = prestamo.fecha_vencimiento
-            prestamo.ampliar_plazo(form.cleaned_data['fecha_vencimiento'], perfil)
+            prestamo.ampliar_plazo(form.cleaned_data['fecha_vencimiento'], _bibliotecario(request))
             messages.success(request, f'Plazo ampliado: vencía el {anterior:%d/%m/%Y} y ahora vence el {prestamo.fecha_vencimiento:%d/%m/%Y}.')
             return redirect('prestamos:prestamo_detail', pk=prestamo.pk)
     else:
@@ -158,20 +156,21 @@ def prestamo_ampliar(request, pk):
 @bibliotecario_required
 def multa_pagar(request, pk):
     # Registrar en el mostrador el pago de una multa que quedó pendiente al devolver
-    prestamo = get_object_or_404(Prestamo.objects.select_related('devolucion', 'usuario__user', 'ejemplar__libro'), pk=pk)
+    prestamo = get_object_or_404(Prestamo.objects.select_related('devolucion__multa', 'lector__usuario__user', 'ejemplar__libro'), pk=pk)
     devolucion = getattr(prestamo, 'devolucion', None)
-    if not devolucion or devolucion.monto_multa <= 0 or devolucion.multa_pagada:
+    multa = devolucion.multa_registrada if devolucion else None
+    if not multa or multa.pagada:
         messages.info(request, 'Este préstamo no tiene una multa pendiente de pago.')
         return redirect('prestamos:prestamo_detail', pk=prestamo.pk)
     if request.method == 'POST':
-        devolucion.multa_pagada = True
-        devolucion.save(update_fields=['multa_pagada'])
-        messages.success(request, f'Pago de {formato_pesos(devolucion.monto_multa)} registrado para {prestamo.usuario.get_nombre_completo()}.')
+        multa.registrar_pago(_bibliotecario(request))
+        messages.success(request, f'Pago de {formato_pesos(multa.monto)} registrado para {prestamo.usuario.get_nombre_completo()}.')
         destino = request.POST.get('next', '')
         if destino and url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
             return redirect(destino)
         return redirect('prestamos:prestamo_detail', pk=prestamo.pk)
-    return render(request, 'prestamos/multa_pagar.html', {'prestamo': prestamo, 'devolucion': devolucion, 'siguiente': request.GET.get('next', '')})
+    return render(request, 'prestamos/multa_pagar.html', {'prestamo': prestamo, 'devolucion': devolucion, 'multa': multa,
+                                                          'siguiente': request.GET.get('next', '')})
 
 
 @bibliotecario_required
@@ -179,11 +178,7 @@ def prestamo_rechazar(request, pk):
     prestamo = get_object_or_404(Prestamo, pk=pk, estado='pendiente')
 
     if request.method == 'POST':
-        try:
-            perfil = request.user.perfil
-        except UsuarioBiblioteca.DoesNotExist:
-            perfil = None
-        prestamo.rechazar(perfil)
+        prestamo.rechazar(_bibliotecario(request))
         messages.warning(request, f'Préstamo #{prestamo.pk} rechazado.')
         return redirect('prestamos:prestamo_list')
 
@@ -201,11 +196,9 @@ def devolucion_registrar(request, prestamo_pk):
         if form.is_valid():
             devolucion = form.save(commit=False)
             devolucion.prestamo = prestamo
-            try:
-                devolucion.registrado_por = request.user.perfil
-            except UsuarioBiblioteca.DoesNotExist:
-                pass
-            devolucion.save()
+            devolucion.registrado_por = _bibliotecario(request)
+            # La multa (si hubo retraso) se crea al guardar; la casilla dice si se pagó en el acto
+            devolucion.save(multa_pagada=form.cleaned_data.get('multa_pagada', False))
             messages.success(
                 request,
                 f'Devolución registrada. Multa: {formato_pesos(devolucion.monto_multa)}'
@@ -223,7 +216,7 @@ def devolucion_registrar(request, prestamo_pk):
 
     multa_estimada = prestamo.multa_estimada()
     return render(request, 'prestamos/devolucion_form.html', {
-        'tarifa': ConfiguracionMulta.tarifa_vigente(),
+        'tarifa': TarifaMulta.valor_vigente(),
         'form': form,
         'prestamo': prestamo,
         'multa_estimada': multa_estimada,
@@ -235,11 +228,7 @@ def prestamo_reportar_perdida(request, pk):
     prestamo = get_object_or_404(Prestamo, pk=pk, estado__in=['activo', 'vencido'])
 
     if request.method == 'POST':
-        try:
-            perfil = request.user.perfil
-        except UsuarioBiblioteca.DoesNotExist:
-            perfil = None
-        devolucion = prestamo.reportar_perdida(perfil)
+        devolucion = prestamo.reportar_perdida(_bibliotecario(request))
         messages.warning(
             request,
             f'Préstamo #{prestamo.pk} cerrado por pérdida. El ejemplar {prestamo.ejemplar.codigo_barras} quedó como perdido.'
@@ -256,27 +245,25 @@ def prestamo_reportar_perdida(request, pk):
 
 @bibliotecario_required
 def multa_config(request):
-    vigente = ConfiguracionMulta.objects.filter(activa=True).order_by('-vigencia_desde', '-pk').first()
+    vigente = TarifaMulta.vigente()
 
     if request.method == 'POST':
         form = TarifaMultaForm(request.POST)
         if form.is_valid():
-            nueva_tarifa = form.cleaned_data['tarifa_por_dia']
-            if vigente and vigente.tarifa_por_dia == nueva_tarifa:
+            nueva_tarifa = form.cleaned_data['valor_dia']
+            if vigente and vigente.valor_dia == nueva_tarifa:
                 messages.info(request, f'La tarifa ya es {formato_pesos(nueva_tarifa)} por día. No se hicieron cambios.')
                 return redirect('prestamos:multa_config')
             # No se sobrescribe la tarifa anterior: se desactiva y se crea un registro nuevo (queda el historial)
             with transaction.atomic():
-                ConfiguracionMulta.objects.filter(activa=True).update(activa=False)
-                ConfiguracionMulta.objects.create(
-                    tarifa_por_dia=nueva_tarifa, vigencia_desde=timezone.localdate(), activa=True
-                )
+                TarifaMulta.objects.filter(activa=True).update(activa=False)
+                TarifaMulta.objects.create(valor_dia=nueva_tarifa, vigente_desde=timezone.localdate(), activa=True)
             messages.success(request, f'Nueva tarifa de multa: {formato_pesos(nueva_tarifa)} por día, vigente desde hoy.')
             return redirect('prestamos:multa_config')
     else:
-        form = TarifaMultaForm(initial={'tarifa_por_dia': vigente.tarifa_por_dia if vigente else None})
+        form = TarifaMultaForm(initial={'valor_dia': vigente.valor_dia if vigente else None})
 
-    historial = ConfiguracionMulta.objects.order_by('-vigencia_desde', '-pk')
+    historial = TarifaMulta.objects.order_by('-vigente_desde', '-pk')
     return render(request, 'prestamos/multa_config.html', {
         'form': form,
         'vigente': vigente,

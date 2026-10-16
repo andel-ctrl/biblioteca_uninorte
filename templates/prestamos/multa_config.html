@@ -15,8 +15,8 @@
     <aside class="formulario__notas">
         <h2>Tarifa vigente</h2>
         {% if vigente %}
-        <p class="tarifa-vigente"><span class="cifra-grande">{{ vigente.tarifa_por_dia|pesos }}</span> por día</p>
-        <p>Desde el {{ vigente.vigencia_desde|date:"d/m/Y" }}.</p>
+        <p class="tarifa-vigente"><span class="cifra-grande">{{ vigente.valor_dia|pesos }}</span> por día</p>
+        <p>Desde el {{ vigente.vigente_desde|date:"d/m/Y" }}.</p>
         {% else %}
         <p class="text-danger">No hay tarifa definida: las devoluciones con retraso no generan multa.</p>
         {% endif %}
@@ -27,7 +27,7 @@
         <form method="post" class="formulario__cuerpo" novalidate>
             {% csrf_token %}
             <div class="campos">
-                {% include 'componentes/_campo.html' with field=form.tarifa_por_dia %}
+                {% include 'componentes/_campo.html' with field=form.valor_dia %}
             </div>
             <div class="formulario__acciones">
                 <button type="submit" class="btn btn-primary">Guardar nueva tarifa <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
@@ -39,8 +39,8 @@
             <ol class="historial">
                 {% for t in historial %}
                 <li class="historial__fila historial__fila--tarifa">
-                    <span class="historial__fecha cifra">{{ t.vigencia_desde|date:"d.m.Y" }}</span>
-                    <span class="cifra">{{ t.tarifa_por_dia|pesos }} por día</span>
+                    <span class="historial__fecha cifra">{{ t.vigente_desde|date:"d.m.Y" }}</span>
+                    <span class="cifra">{{ t.valor_dia|pesos }} por día</span>
                     <span class="historial__estado">{% if t.activa %}<span class="estado estado--verde"><i class="bi bi-check2-circle" aria-hidden="true"></i>Vigente</span>{% else %}<span class="estado estado--piedra"><i class="bi bi-clock-history" aria-hidden="true"></i>Anterior</span>{% endif %}</span>
                 </li>
                 {% empty %}<li class="historial__fila">Sin registros.</li>{% endfor %}

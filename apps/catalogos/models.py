@@ -7,6 +7,7 @@ class Autor(models.Model):
     biografia = models.TextField(blank=True)
 
     class Meta:
+        db_table = 'autor'
         verbose_name = 'Autor'
         verbose_name_plural = 'Autores'
         ordering = ['apellido', 'nombre']
@@ -30,6 +31,7 @@ class Categoria(models.Model):
     descripcion = models.TextField(blank=True)
 
     class Meta:
+        db_table = 'categoria'
         verbose_name = 'Categoría'
         verbose_name_plural = 'Categorías'
         ordering = ['nombre']
@@ -41,7 +43,8 @@ class Categoria(models.Model):
 class Libro(models.Model):
     isbn = models.CharField(max_length=20, unique=True, verbose_name='ISBN')
     titulo = models.CharField(max_length=255, verbose_name='Título')
-    autores = models.ManyToManyField(Autor, related_name='libros')
+    # Muchos a muchos: tabla intermedia libro_autor (libro_id, autor_id), el par no se repite
+    autores = models.ManyToManyField(Autor, related_name='libros', db_table='libro_autor')
     editorial = models.CharField(max_length=150)
     anio_publicacion = models.PositiveIntegerField(verbose_name='Año de publicación')
     categoria = models.ForeignKey(
@@ -52,6 +55,7 @@ class Libro(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'libro'
         verbose_name = 'Libro'
         verbose_name_plural = 'Libros'
         ordering = ['titulo']
@@ -82,12 +86,15 @@ class Ejemplar(models.Model):
 
     libro = models.ForeignKey(Libro, on_delete=models.CASCADE, related_name='ejemplares')
     codigo_barras = models.CharField(max_length=50, unique=True, verbose_name='Código de barras')
-    ubicacion = models.CharField(max_length=100, verbose_name='Ubicación (sala/estante)')
+    # Ubicación en dos columnas atómicas (primera forma normal): se puede consultar por sala
+    sala = models.CharField(max_length=30)
+    estante = models.CharField(max_length=30)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='disponible')
     notas = models.TextField(blank=True)
     fecha_adquisicion = models.DateField(null=True, blank=True)
 
     class Meta:
+        db_table = 'ejemplar'
         verbose_name = 'Ejemplar'
         verbose_name_plural = 'Ejemplares'
         constraints = [
@@ -98,6 +105,11 @@ class Ejemplar(models.Model):
 
     def __str__(self):
         return f"{self.codigo_barras} — {self.libro.titulo} [{self.get_estado_display()}]"
+
+    @property
+    def ubicacion(self):
+        """Texto para mostrar: «Sala A / Estante 3»."""
+        return f'Sala {self.sala} / Estante {self.estante}'
 
     def esta_disponible(self):
         return self.estado == 'disponible'

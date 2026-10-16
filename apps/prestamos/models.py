@@ -1,31 +1,38 @@
 from django.db import models, transaction
 from django.utils import timezone
-from apps.usuarios.models import UsuarioBiblioteca
+from apps.usuarios.models import Lector, Bibliotecario
 from apps.catalogos.models import Ejemplar
 import datetime
 from apps.catalogos.formato import formato_pesos
 
 
-class ConfiguracionMulta(models.Model):
-    tarifa_por_dia = models.DecimalField(max_digits=8, decimal_places=2, verbose_name='Tarifa por día ($)')
-    vigencia_desde = models.DateField(default=datetime.date.today)
+class TarifaMulta(models.Model):
+    """Valor de la multa por día de retraso. Se guarda el historial: rige la activa más reciente,
+    y cada multa queda enlazada a la tarifa con la que se calculó."""
+    valor_dia = models.DecimalField(max_digits=8, decimal_places=2, verbose_name='Valor por día ($)')
+    vigente_desde = models.DateField(default=datetime.date.today)
     activa = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = 'Configuración de Multa'
-        verbose_name_plural = 'Configuraciones de Multa'
+        db_table = 'tarifa_multa'
+        verbose_name = 'Tarifa de multa'
+        verbose_name_plural = 'Tarifas de multa'
         constraints = [
-            models.CheckConstraint(condition=models.Q(tarifa_por_dia__gt=0), name='tarifa_multa_positiva',
+            models.CheckConstraint(condition=models.Q(valor_dia__gt=0), name='tarifa_multa_positiva',
                 violation_error_message='La tarifa debe ser mayor que cero.'),
         ]
 
     def __str__(self):
-        return f"{formato_pesos(self.tarifa_por_dia)}/día desde {self.vigencia_desde}"
+        return f"{formato_pesos(self.valor_dia)}/día desde {self.vigente_desde}"
 
     @classmethod
-    def tarifa_vigente(cls):
-        config = cls.objects.filter(activa=True).order_by('-vigencia_desde').first()
-        return config.tarifa_por_dia if config else 0
+    def vigente(cls):
+        return cls.objects.filter(activa=True).order_by('-vigente_desde', '-pk').first()
+
+    @classmethod
+    def valor_vigente(cls):
+        tarifa = cls.vigente()
+        return tarifa.valor_dia if tarifa else 0
 
 
 class Prestamo(models.Model):
@@ -41,8 +48,9 @@ class Prestamo(models.Model):
         ('perdido', 'Perdido'),
     ]
 
-    usuario = models.ForeignKey(
-        UsuarioBiblioteca, on_delete=models.PROTECT, related_name='prestamos'
+    # Solo un lector solicita; solo un bibliotecario aprueba (las llaves foráneas lo garantizan)
+    lector = models.ForeignKey(
+        Lector, on_delete=models.PROTECT, related_name='prestamos'
     )
     ejemplar = models.ForeignKey(
         Ejemplar, on_delete=models.PROTECT, related_name='prestamos'
@@ -52,12 +60,13 @@ class Prestamo(models.Model):
     fecha_vencimiento = models.DateField(null=True, blank=True, verbose_name='Fecha de vencimiento')
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
     aprobado_por = models.ForeignKey(
-        UsuarioBiblioteca, on_delete=models.SET_NULL,
+        Bibliotecario, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='prestamos_aprobados'
     )
     observaciones = models.TextField(blank=True)
 
     class Meta:
+        db_table = 'prestamo'
         verbose_name = 'Préstamo'
         verbose_name_plural = 'Préstamos'
         ordering = ['-fecha_solicitud']
@@ -81,7 +90,12 @@ class Prestamo(models.Model):
         ]
 
     def __str__(self):
-        return f"Préstamo #{self.pk} — {self.usuario} — {self.ejemplar.libro.titulo}"
+        return f"Préstamo #{self.pk} — {self.lector} — {self.ejemplar.libro.titulo}"
+
+    @property
+    def usuario(self):
+        """Datos comunes (nombre, código, estado) del lector que pidió el préstamo."""
+        return self.lector.usuario
 
     @classmethod
     def actualizar_vencidos(cls):
@@ -101,8 +115,7 @@ class Prestamo(models.Model):
         return 0
 
     def multa_estimada(self):
-        tarifa = ConfiguracionMulta.tarifa_vigente()
-        return self.dias_retraso() * tarifa
+        return self.dias_retraso() * TarifaMulta.valor_vigente()
 
     def aprobar(self, bibliotecario, fecha_vencimiento=None):
         # Aprueba el préstamo, cambia estado del ejemplar y pone lo de las fechas.
@@ -179,34 +192,24 @@ class Devolucion(models.Model):
     fecha_devolucion = models.DateField(default=datetime.date.today)
     observacion = models.CharField(max_length=50, choices=OBSERVACION_CHOICES, blank=True)
     detalle_observacion = models.TextField(blank=True)
-    monto_multa = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    multa_pagada = models.BooleanField(default=False)
     registrado_por = models.ForeignKey(
-        UsuarioBiblioteca, on_delete=models.SET_NULL,
+        Bibliotecario, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='devoluciones_registradas'
     )
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'devolucion'
         verbose_name = 'Devolución'
         verbose_name_plural = 'Devoluciones'
-        constraints = [
-            models.CheckConstraint(condition=models.Q(monto_multa__gte=0), name='devolucion_multa_no_negativa',
-                violation_error_message='La multa no puede ser negativa.'),
-        ]
 
     def __str__(self):
         return f"Devolución del Préstamo #{self.prestamo.pk} — {self.fecha_devolucion}"
 
-    def calcular_multa(self):
-        # Calcula la multa automáticamente según días de retraso.
-        tarifa = ConfiguracionMulta.tarifa_vigente()
+    def dias_retraso(self):
         if self.prestamo.fecha_vencimiento:
-            dias = (self.fecha_devolucion - self.prestamo.fecha_vencimiento).days
-            self.monto_multa = max(0, dias) * tarifa
-        else:
-            self.monto_multa = 0
-        return self.monto_multa
+            return max(0, (self.fecha_devolucion - self.prestamo.fecha_vencimiento).days)
+        return 0
 
     def es_perdida(self):
         return self.observacion == 'perdido'
@@ -216,17 +219,80 @@ class Devolucion(models.Model):
             return 'perdido'
         return 'mantenimiento' if self.observacion in self.OBSERVACIONES_MANTENIMIENTO else 'disponible'
 
-    def save(self, *args, **kwargs):
+    # La multa vive en su propia tabla; estos atajos permiten leerla desde la devolución
+    @property
+    def multa_registrada(self):
+        return getattr(self, 'multa', None)
+
+    @property
+    def monto_multa(self):
+        multa = self.multa_registrada
+        return multa.monto if multa else 0
+
+    @property
+    def multa_pagada(self):
+        multa = self.multa_registrada
+        return multa.pagada if multa else False
+
+    def save(self, *args, multa_pagada=False, **kwargs):
+        """Al registrar la devolución: cierra el préstamo, actualiza el ejemplar y, si hubo
+        retraso, crea la multa con la tarifa vigente (días de retraso × valor por día)."""
         es_nueva = self.pk is None
         with transaction.atomic():
-            if es_nueva:
-                self.calcular_multa()
-                if self.monto_multa <= 0:
-                    self.multa_pagada = False  # sin multa no hay pago que registrar
             super().save(*args, **kwargs)
-            # Solo al registrar la devolución: cerrar préstamo y liberar (o enviar a mantenimiento) el ejemplar
             if es_nueva:
                 self.prestamo.estado = 'perdido' if self.es_perdida() else 'devuelto'
                 self.prestamo.save()
                 self.prestamo.ejemplar.estado = self.estado_ejemplar_resultante()
                 self.prestamo.ejemplar.save()
+                dias = self.dias_retraso()
+                tarifa = TarifaMulta.vigente()
+                if dias > 0 and tarifa:
+                    Multa.objects.create(
+                        devolucion=self, tarifa=tarifa, monto=dias * tarifa.valor_dia,
+                        pagada=multa_pagada,
+                        fecha_pago=self.fecha_devolucion if multa_pagada else None,
+                        cobrada_por=self.registrado_por if multa_pagada else None,
+                    )
+
+
+class Multa(models.Model):
+    """Sanción por entregar tarde: existe solo si hubo retraso (0 o 1 por devolución).
+    Guarda la tarifa con la que se calculó y el monto de ese momento; los días de retraso
+    no se guardan porque se calculan con las fechas del préstamo y de la devolución."""
+    devolucion = models.OneToOneField(Devolucion, on_delete=models.PROTECT, related_name='multa')
+    tarifa = models.ForeignKey(TarifaMulta, on_delete=models.PROTECT, related_name='multas')
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    pagada = models.BooleanField(default=False)
+    fecha_pago = models.DateField(null=True, blank=True)
+    cobrada_por = models.ForeignKey(
+        Bibliotecario, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='multas_cobradas'
+    )
+
+    class Meta:
+        db_table = 'multa'
+        verbose_name = 'Multa'
+        verbose_name_plural = 'Multas'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(monto__gt=0), name='multa_monto_positivo',
+                violation_error_message='El monto de la multa debe ser mayor que cero.'),
+            # Pagada si y solo si tiene fecha de pago
+            models.CheckConstraint(
+                condition=models.Q(pagada=True, fecha_pago__isnull=False) | models.Q(pagada=False, fecha_pago__isnull=True),
+                name='multa_pago_coherente',
+                violation_error_message='Una multa pagada necesita fecha de pago, y una pendiente no la tiene.'),
+        ]
+
+    def __str__(self):
+        return f"Multa de {formato_pesos(self.monto)} — préstamo #{self.devolucion.prestamo_id}"
+
+    def dias_retraso(self):
+        return self.devolucion.dias_retraso()
+
+    def registrar_pago(self, bibliotecario, fecha=None):
+        from django.utils import timezone
+        self.pagada = True
+        self.fecha_pago = fecha or timezone.localdate()
+        self.cobrada_por = bibliotecario
+        self.save(update_fields=['pagada', 'fecha_pago', 'cobrada_por'])

@@ -1,4 +1,4 @@
-from .decorators import es_bibliotecario_o_staff
+from .decorators import es_bibliotecario
 from .personajes import del_usuario
 
 
@@ -8,7 +8,7 @@ def navegacion(request):
     if user is None or not user.is_authenticated:
         return {'es_bibliotecario': False}
 
-    es_bib = es_bibliotecario_o_staff(user)
+    es_bib = es_bibliotecario(user)
     datos = {'es_bibliotecario': es_bib}
     if es_bib:
         # Import local: evita dependencia circular entre apps al cargar la configuración

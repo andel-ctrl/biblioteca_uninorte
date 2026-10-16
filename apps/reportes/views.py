@@ -4,7 +4,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from apps.prestamos.models import Prestamo, Devolucion
 from apps.catalogos.models import Libro, Ejemplar
-from apps.usuarios.models import UsuarioBiblioteca
+from apps.usuarios.models import Usuario
 from apps.usuarios.decorators import bibliotecario_required
 import datetime
 from apps.catalogos.formato import formato_pesos
@@ -59,10 +59,10 @@ def dashboard(request):
 
     # Bandeja: solicitudes pendientes, la más antigua primero
     solicitudes = list(Prestamo.objects.filter(estado='pendiente')
-                       .select_related('usuario__user', 'ejemplar__libro').order_by('fecha_solicitud'))
+                       .select_related('lector__usuario__user', 'ejemplar__libro').order_by('fecha_solicitud'))
     for p in solicitudes:
         # Mismas validaciones que hará la vista de aprobación, mostradas de antemano
-        r = p.usuario.restriccion_solicitudes()
+        r = p.lector.restriccion_solicitudes()
         if r and r['tipo'] == 'bloqueada':
             p.bloqueo = 'El lector está bloqueado'
         elif r and r['tipo'] == 'vencidos':
@@ -73,9 +73,9 @@ def dashboard(request):
             p.bloqueo = 'El ejemplar ya no está disponible' if not p.ejemplar.esta_disponible() else ''
 
     vencidos = list(Prestamo.objects.filter(estado='vencido')
-                    .select_related('usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento'))
+                    .select_related('lector__usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento'))
     proximos = list(Prestamo.objects.filter(estado='activo', fecha_vencimiento__lte=hoy + datetime.timedelta(days=3))
-                    .select_related('usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento'))
+                    .select_related('lector__usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento'))
     for p in proximos:
         p.dias_restantes = (p.fecha_vencimiento - hoy).days
 
@@ -87,16 +87,17 @@ def dashboard(request):
         mantenimiento=Count('id', filter=Q(estado='mantenimiento')),
         perdido=Count('id', filter=Q(estado='perdido')),
     )
-    usuarios = UsuarioBiblioteca.objects.aggregate(
+    # La sección «Lectores» de la mesa cuenta solo el subtipo lector
+    usuarios = Usuario.objects.filter(tipo='lector').aggregate(
         total=Count('id'), activos=Count('id', filter=Q(estado='activo')), bloqueados=Count('id', filter=Q(estado='bloqueado')),
     )
     prestamos_activos = Prestamo.objects.filter(estado='activo').count()
 
     # Actividad reciente: solicitudes y cierres (devoluciones o pérdidas) por fecha real
     eventos = [{'tipo': 'solicitud', 'fecha': p.fecha_solicitud, 'prestamo': p}
-               for p in Prestamo.objects.select_related('usuario__user', 'ejemplar__libro').order_by('-fecha_solicitud')[:8]]
+               for p in Prestamo.objects.select_related('lector__usuario__user', 'ejemplar__libro').order_by('-fecha_solicitud')[:8]]
     eventos += [{'tipo': 'perdida' if d.observacion == 'perdido' else 'devolucion', 'fecha': d.creado_en, 'prestamo': d.prestamo, 'devolucion': d}
-                for d in Devolucion.objects.select_related('prestamo__usuario__user', 'prestamo__ejemplar__libro').order_by('-creado_en')[:8]]
+                for d in Devolucion.objects.select_related('prestamo__lector__usuario__user', 'prestamo__ejemplar__libro').order_by('-creado_en')[:8]]
     eventos = sorted(eventos, key=lambda e: e['fecha'], reverse=True)[:8]
 
     context = {
@@ -130,7 +131,7 @@ def prestamos_activos(request):
     Prestamo.actualizar_vencidos()
     prestamos = Prestamo.objects.filter(
         estado__in=['activo', 'vencido']
-    ).select_related('usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento')
+    ).select_related('lector__usuario__user', 'ejemplar__libro').order_by('fecha_vencimiento')
     return render(request, 'reportes/prestamos_activos.html', {'prestamos': prestamos})
 
 
@@ -155,13 +156,14 @@ def usuarios_mas_prestamos(request):
     desde, hasta = _rango_fechas(request)
     Prestamo.actualizar_vencidos()
 
-    filtro = _filtro_prestados('prestamos__', desde, hasta)
-    usuarios = UsuarioBiblioteca.objects.select_related('user').annotate(
-        total_prestamos=Count('prestamos', filter=filtro),
-        total_activos=Count('prestamos', filter=filtro & Q(prestamos__estado='activo')),
-        total_vencidos=Count('prestamos', filter=filtro & Q(prestamos__estado='vencido')),
-        total_devueltos=Count('prestamos', filter=filtro & Q(prestamos__estado='devuelto')),
-        total_perdidos=Count('prestamos', filter=filtro & Q(prestamos__estado='perdido')),
+    # Solo los lectores piden préstamos (subtipo lector)
+    filtro = _filtro_prestados('lector__prestamos__', desde, hasta)
+    usuarios = Usuario.objects.select_related('user', 'lector').annotate(
+        total_prestamos=Count('lector__prestamos', filter=filtro),
+        total_activos=Count('lector__prestamos', filter=filtro & Q(lector__prestamos__estado='activo')),
+        total_vencidos=Count('lector__prestamos', filter=filtro & Q(lector__prestamos__estado='vencido')),
+        total_devueltos=Count('lector__prestamos', filter=filtro & Q(lector__prestamos__estado='devuelto')),
+        total_perdidos=Count('lector__prestamos', filter=filtro & Q(lector__prestamos__estado='perdido')),
     ).filter(total_prestamos__gt=0).order_by('-total_prestamos', 'user__last_name')[:20]
 
     return render(request, 'reportes/usuarios_mas_prestamos.html', {

@@ -82,9 +82,11 @@
             {% if prestamo.devolucion %}
             <div><dt>Observación</dt><dd>{{ prestamo.devolucion.get_observacion_display|default:"En buen estado" }}</dd></div>
             <div><dt>Multa</dt><dd class="cifra">{% if prestamo.devolucion.monto_multa > 0 %}{{ prestamo.devolucion.monto_multa|pesos }}{% else %}Sin multa{% endif %}</dd></div>
-            {% if prestamo.devolucion.monto_multa > 0 %}
-            <div><dt>Pago</dt><dd>{% if prestamo.devolucion.multa_pagada %}{% estado 'pagada' 'multa' 'Pagada' %}{% else %}{% estado 'pendiente' 'multa' 'Por pagar' %}{% endif %}</dd></div>
-            {% endif %}
+            {% with multa=prestamo.devolucion.multa_registrada %}{% if multa %}
+            <div><dt>Cálculo</dt><dd class="cifra">{{ multa.dias_retraso }} día{{ multa.dias_retraso|pluralize }} × {{ multa.tarifa.valor_dia|pesos }}</dd></div>
+            <div><dt>Pago</dt><dd>{% if multa.pagada %}{% estado 'pagada' 'multa' 'Pagada' %}{% else %}{% estado 'pendiente' 'multa' 'Por pagar' %}{% endif %}</dd></div>
+            {% if multa.pagada %}<div><dt>Pagada el</dt><dd class="cifra">{{ multa.fecha_pago|date:"d/m/Y" }}{% if multa.cobrada_por %} · {{ multa.cobrada_por.get_nombre_completo }}{% endif %}</dd></div>{% endif %}
+            {% endif %}{% endwith %}
             {% endif %}
         </dl>
         {% if prestamo.devolucion.detalle_observacion %}<p class="detalle-prestamo__nota">«{{ prestamo.devolucion.detalle_observacion }}»</p>{% endif %}

@@ -4,9 +4,9 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.db.models import Count, ProtectedError, Q
 from django.utils import timezone
-from .models import UsuarioBiblioteca
+from .models import Usuario
 from apps.prestamos.models import Prestamo
-from .forms import UsuarioBibliotecaForm, RegistroForm
+from .forms import UsuarioForm, RegistroForm, ROL_CHOICES
 from .decorators import bibliotecario_required
 
 
@@ -17,9 +17,10 @@ def usuario_list(request):
     rol = request.GET.get('rol', '')
     estado = request.GET.get('estado', '')
 
-    usuarios = UsuarioBiblioteca.objects.select_related('user').annotate(
-        n_activos=Count('prestamos', filter=Q(prestamos__estado__in=['activo', 'vencido'])),
-        n_vencidos=Count('prestamos', filter=Q(prestamos__estado='vencido')),
+    # Los préstamos son del subtipo lector (un bibliotecario siempre tiene 0)
+    usuarios = Usuario.objects.select_related('user', 'lector', 'bibliotecario').annotate(
+        n_activos=Count('lector__prestamos', filter=Q(lector__prestamos__estado__in=['activo', 'vencido'])),
+        n_vencidos=Count('lector__prestamos', filter=Q(lector__prestamos__estado='vencido')),
     )
     if query:
         usuarios = usuarios.filter(
@@ -27,15 +28,17 @@ def usuario_list(request):
             Q(user__username__icontains=query) | Q(user__email__icontains=query) |
             Q(codigo_universitario__icontains=query) | Q(identificacion__icontains=query)
         )
-    if rol in dict(UsuarioBiblioteca.ROL_CHOICES):
-        usuarios = usuarios.filter(rol=rol)
-    if estado in dict(UsuarioBiblioteca.ESTADO_CHOICES):
+    if rol == 'bibliotecario':
+        usuarios = usuarios.filter(tipo='bibliotecario')
+    elif rol in dict(ROL_CHOICES):
+        usuarios = usuarios.filter(lector__rol=rol)
+    if estado in dict(Usuario.ESTADO_CHOICES):
         usuarios = usuarios.filter(estado=estado)
 
     return render(request, 'usuarios/usuario_list.html', {
         'usuarios': usuarios.order_by('user__last_name', 'user__first_name'),
         'query': query, 'rol': rol, 'estado': estado,
-        'roles': UsuarioBiblioteca.ROL_CHOICES, 'estados': UsuarioBiblioteca.ESTADO_CHOICES,
+        'roles': ROL_CHOICES, 'estados': Usuario.ESTADO_CHOICES,
     })
 
 
@@ -54,9 +57,10 @@ def usuario_create(request):
 
 @bibliotecario_required
 def usuario_detail(request, pk):
-    usuario = get_object_or_404(UsuarioBiblioteca, pk=pk)
+    usuario = get_object_or_404(Usuario, pk=pk)
     Prestamo.actualizar_vencidos()
-    prestamos = list(usuario.prestamos.select_related('ejemplar__libro', 'devolucion').order_by('-fecha_solicitud'))
+    lector = getattr(usuario, 'lector', None)
+    prestamos = list(lector.prestamos.select_related('ejemplar__libro', 'devolucion__multa').order_by('-fecha_solicitud')) if lector else []
     multas = [p.devolucion for p in prestamos if hasattr(p, 'devolucion') and p.devolucion.monto_multa > 0]
     resumen = {
         'total': sum(1 for p in prestamos if p.fecha_prestamo),
@@ -70,9 +74,9 @@ def usuario_detail(request, pk):
 
 @bibliotecario_required
 def usuario_edit(request, pk):
-    usuario = get_object_or_404(UsuarioBiblioteca, pk=pk)
+    usuario = get_object_or_404(Usuario, pk=pk)
     if request.method == 'POST':
-        form = UsuarioBibliotecaForm(request.POST, instance=usuario, editor=request.user)
+        form = UsuarioForm(request.POST, instance=usuario, editor=request.user)
         if form.is_valid():
             form.save()
             if form.es_su_propia_cuenta() and form.cleaned_data.get('nueva_password'):
@@ -81,7 +85,7 @@ def usuario_edit(request, pk):
             messages.success(request, 'Usuario actualizado.')
             return redirect('usuarios:usuario_detail', pk=pk)
     else:
-        form = UsuarioBibliotecaForm(instance=usuario, editor=request.user)
+        form = UsuarioForm(instance=usuario, editor=request.user)
     return render(request, 'usuarios/usuario_form.html', {
         'form': form, 'titulo': f'Editar Usuario: {usuario.get_nombre_completo()}', 'usuario': usuario,
     })
@@ -89,7 +93,7 @@ def usuario_edit(request, pk):
 
 @bibliotecario_required
 def usuario_delete(request, pk):
-    usuario = get_object_or_404(UsuarioBiblioteca, pk=pk)
+    usuario = get_object_or_404(Usuario, pk=pk)
     if usuario.user_id == request.user.pk:
         messages.error(request, 'No puedes eliminar tu propia cuenta.')
         return redirect('usuarios:usuario_detail', pk=pk)
@@ -98,7 +102,7 @@ def usuario_delete(request, pk):
         try:
             usuario.user.delete()
         except ProtectedError:
-            # PROTECT en Prestamo.usuario impide borrar usuarios con historial de préstamos
+            # PROTECT en prestamo.lector impide borrar lectores con historial de préstamos
             messages.error(request, f'No se puede eliminar a «{nombre}» porque tiene préstamos registrados. Puedes cambiar su estado a bloqueado.')
             return redirect('usuarios:usuario_detail', pk=pk)
         messages.success(request, f'Usuario «{nombre}» eliminado.')
@@ -108,14 +112,16 @@ def usuario_delete(request, pk):
 
 @login_required
 def mi_historial(request):
-    try:
-        perfil = request.user.perfil
-    except UsuarioBiblioteca.DoesNotExist:
+    perfil = getattr(request.user, 'perfil', None)
+    if perfil is None:
         messages.error(request, 'No tienes perfil de biblioteca asociado.')
         return redirect('catalogos:libro_list')
+    if not perfil.es_lector():  # especialización disjunta: el bibliotecario no tiene préstamos propios
+        messages.info(request, 'El personal bibliotecario no solicita préstamos.')
+        return redirect('reportes:dashboard')
     Prestamo.actualizar_vencidos()
     prestamos = list(
-        perfil.prestamos.select_related('ejemplar__libro', 'devolucion').prefetch_related('ejemplar__libro__autores')
+        perfil.lector.prestamos.select_related('ejemplar__libro', 'devolucion__multa').prefetch_related('ejemplar__libro__autores')
         .order_by('-fecha_solicitud')
     )
 

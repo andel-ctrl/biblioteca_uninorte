@@ -7,18 +7,18 @@ django.setup()
 
 from django.contrib.auth.models import User
 from apps.catalogos.models import Autor, Categoria, Libro, Ejemplar
-from apps.usuarios.models import UsuarioBiblioteca
-from apps.prestamos.models import ConfiguracionMulta
+from apps.usuarios.models import Usuario, Lector, Bibliotecario
+from apps.prestamos.models import TarifaMulta
 import datetime
 
 print("=== Cargando datos iniciales ===")
 
-# 1. Config de la mulTA
-multa, created = ConfiguracionMulta.objects.get_or_create(
+# 1. Tarifa de la multa
+tarifa, created = TarifaMulta.objects.get_or_create(
     activa=True,
-    defaults={'tarifa_por_dia': 500.00, 'vigencia_desde': datetime.date.today()}
+    defaults={'valor_dia': 500.00, 'vigente_desde': datetime.date.today()}
 )
-print(f"{'✓' if created else '→'} Configuración de multa: $500/día")
+print(f"{'✓' if created else '→'} Tarifa de multa: $500/día")
 
 # 2. Categorías
 categorias_data = ['Ciencias', 'Humanidades', 'Tecnología', 'Literatura', 'Historia', 'Matemáticas', 'Derecho', 'Medicina']
@@ -347,12 +347,15 @@ for data in libros_data:
     if created:
         libro.autores.set(data['autores'])
         for codigo, ubicacion in data['ejemplares']:
-            Ejemplar.objects.create(libro=libro, codigo_barras=codigo, ubicacion=ubicacion)
+            # «Sala A / Estante 1» -> sala='A', estante='1'
+            sala, estante = (parte.split(' ', 1)[1] for parte in ubicacion.split(' / '))
+            Ejemplar.objects.create(libro=libro, codigo_barras=codigo, sala=sala, estante=estante)
     print(f"{'✓' if created else '→'} Libro: {data['titulo']}")
 
 admins_data = [
     {
         'username': 'admin',
+        'turno': 'manana',
         'first_name': 'Administrador',
         'last_name': 'Biblioteca',
         'email': 'admin@biblioteca.edu',
@@ -362,6 +365,7 @@ admins_data = [
     },
     {
         'username': 'andel',
+        'turno': 'tarde',
         'first_name': 'Angelo',
         'last_name': 'De León',
         'email': 'adeleon@biblioteca.edu',
@@ -371,6 +375,7 @@ admins_data = [
     },
     {
         'username': 'luisangel',
+        'turno': 'noche',
         'first_name': 'Luis Angel',
         'last_name': 'Cuellar',
         'email': 'lcuellar@biblioteca.edu',
@@ -380,6 +385,7 @@ admins_data = [
     },
     {
         'username': 'carcabria',
+        'turno': 'manana',
         'first_name': 'Carlos',
         'last_name': 'Calabria',
         'email': 'ccalabria@biblioteca.edu',
@@ -389,6 +395,7 @@ admins_data = [
     },
     {
         'username': 'dubalaguil',
+        'turno': 'tarde',
         'first_name': 'Dubal',
         'last_name': 'Aguilar',
         'email': 'daguilar@biblioteca.edu',
@@ -398,6 +405,7 @@ admins_data = [
     },
     {
         'username': 'matthewcis',
+        'turno': 'noche',
         'first_name': 'Mateo',
         'last_name': 'Cisneros',
         'email': 'mcisneros@biblioteca.edu',
@@ -416,13 +424,14 @@ for item in admins_data:
             first_name=item['first_name'],
             last_name=item['last_name'],
         )
-        UsuarioBiblioteca.objects.create(
+        perfil = Usuario.objects.create(
             user=admin_user,
             codigo_universitario=item['codigo_universitario'],
             identificacion=item['identificacion'],
-            rol='bibliotecario',
+            tipo='bibliotecario',
             estado='activo',
         )
+        Bibliotecario.objects.create(usuario=perfil, turno=item['turno'])
         print(f"✓ Superusuario creado: {item['username']} ({item['first_name']} {item['last_name']})")
     else:
         print(f"→ Superusuario {item['username']} ya existe")
@@ -499,14 +508,14 @@ for item in estudiantes_data:
             first_name=item['first_name'],
             last_name=item['last_name'],
         )
-        UsuarioBiblioteca.objects.create(
+        perfil = Usuario.objects.create(
             user=est_user,
             codigo_universitario=item['codigo_universitario'],
             identificacion=item['identificacion'],
-            rol='estudiante',
-            carrera=item['carrera'],
+            tipo='lector',
             estado='activo',
         )
+        Lector.objects.create(usuario=perfil, rol='estudiante', carrera=item['carrera'])
         print(f"✓ Estudiante creado: {item['username']} ({item['first_name']} {item['last_name']})")
     else:
         print(f"→ Estudiante {item['username']} ya existe")

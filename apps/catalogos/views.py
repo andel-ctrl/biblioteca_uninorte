@@ -98,20 +98,22 @@ def inicio(request):
 
     estado = None
     perfil = getattr(request.user, 'perfil', None)
-    if perfil is not None:
+    lector = getattr(perfil, 'lector', None) if perfil else None
+    if lector is not None:  # la ficha de préstamos es del lector; el bibliotecario no pide libros
         Prestamo.actualizar_vencidos()
-        mios = perfil.prestamos.select_related('ejemplar__libro').order_by('fecha_vencimiento', '-fecha_solicitud')
+        mios = lector.prestamos.select_related('ejemplar__libro').order_by('fecha_vencimiento', '-fecha_solicitud')
         activos = [p for p in mios if p.estado == 'activo']
         vencidos = [p for p in mios if p.estado == 'vencido']
         pendientes = [p for p in mios if p.estado == 'pendiente']
-        multas = Devolucion.objects.filter(prestamo__usuario=perfil, monto_multa__gt=0, multa_pagada=False)
+        # Devoluciones con multa sin pagar (la multa vive en su propia tabla)
+        multas = Devolucion.objects.filter(prestamo__lector=lector, multa__pagada=False)
         estado = {
             'perfil': perfil,
             'activos': activos,
             'vencidos': vencidos,
             'pendientes': pendientes,
-            'multas': list(multas.select_related('prestamo__ejemplar__libro')),
-            'multas_total': multas.aggregate(total=Sum('monto_multa'))['total'] or 0,
+            'multas': list(multas.select_related('prestamo__ejemplar__libro', 'multa')),
+            'multas_total': multas.aggregate(total=Sum('multa__monto'))['total'] or 0,
             'mora_total': sum((p.multa_estimada() for p in vencidos), 0),
         }
 
@@ -130,7 +132,7 @@ def libro_detail(request, pk):
     ejemplares = libro.ejemplares.all()
     # Si el lector no puede pedir libros ahora, la ficha lo explica en lugar de ofrecer «Solicitar»
     perfil = getattr(request.user, 'perfil', None)
-    restriccion = perfil.mensaje_restriccion() if perfil and not perfil.es_bibliotecario() else ''
+    restriccion = perfil.mensaje_restriccion() if perfil and perfil.es_lector() else ''
     return render(request, 'catalogos/libro_detail.html', {'libro': libro, 'ejemplares': ejemplares, 'restriccion': restriccion})
 
 

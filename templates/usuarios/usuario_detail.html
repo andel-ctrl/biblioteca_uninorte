@@ -8,7 +8,7 @@
     <div>
         <p class="encabezado__ref">Ficha de {{ usuario.get_rol_display|lower }} · {{ usuario.codigo_universitario }}</p>
         <h1 class="encabezado__titulo">{{ usuario.user.first_name|default:usuario.user.username }} <em>{{ usuario.user.last_name }}</em></h1>
-        <p class="encabezado__bajada">{{ usuario.carrera|default:"Sin carrera registrada" }}</p>
+        <p class="encabezado__bajada">{% if usuario.es_lector %}{{ usuario.carrera|default:"Sin carrera registrada" }}{% else %}Personal de la biblioteca: aprueba préstamos, registra devoluciones y cobra multas.{% if usuario.get_turno_display %} Turno de la {{ usuario.get_turno_display|lower }}.{% endif %}{% endif %}</p>
     </div>
     <div class="encabezado__acciones">
         <a href="{% url 'usuarios:usuario_edit' usuario.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil" aria-hidden="true"></i> Editar</a>

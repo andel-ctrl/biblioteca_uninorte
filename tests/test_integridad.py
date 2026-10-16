@@ -18,8 +18,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.catalogos.models import Autor, Categoria, Ejemplar, Libro
-from apps.prestamos.models import ConfiguracionMulta, Devolucion, Prestamo
-from apps.usuarios.models import UsuarioBiblioteca
+from apps.prestamos.models import Devolucion, Multa, Prestamo, TarifaMulta
+from apps.usuarios.models import Bibliotecario, Lector, Usuario
 
 CLAVE = 'Clave#Segura2026'
 
@@ -28,10 +28,24 @@ def hace(dias):
     return timezone.localdate() - datetime.timedelta(days=dias)
 
 
+def crear_lector(user, codigo, identificacion, rol='estudiante', carrera=''):
+    """Usuario (supertipo) + su fila en lector. Devuelve el Usuario."""
+    perfil = Usuario.objects.create(user=user, codigo_universitario=codigo, identificacion=identificacion, tipo='lector')
+    Lector.objects.create(usuario=perfil, rol=rol, carrera=carrera)
+    return perfil
+
+
+def crear_bibliotecario(user, codigo, identificacion):
+    """Usuario (supertipo) + su fila en bibliotecario. Devuelve el Usuario."""
+    perfil = Usuario.objects.create(user=user, codigo_universitario=codigo, identificacion=identificacion, tipo='bibliotecario')
+    Bibliotecario.objects.create(usuario=perfil)
+    return perfil
+
+
 class BaseBiblioteca(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.tarifa = ConfiguracionMulta.objects.create(tarifa_por_dia=Decimal('500'), activa=True)
+        cls.tarifa = TarifaMulta.objects.create(valor_dia=Decimal('500'), activa=True)
         cls.categoria = Categoria.objects.create(nombre='Literatura')
         cls.otra_categoria = Categoria.objects.create(nombre='Tecnología')
         cls.autor = Autor.objects.create(nombre='Gabriel', apellido='García Márquez')
@@ -44,21 +58,18 @@ class BaseBiblioteca(TestCase):
             isbn='978-0-0000-0002', titulo='Manual de redes', editorial='Pearson',
             anio_publicacion=2010, categoria=cls.otra_categoria,
         )
-        cls.ej1 = Ejemplar.objects.create(libro=cls.libro, codigo_barras='T-001', ubicacion='Sala A / Estante 1')
-        cls.ej2 = Ejemplar.objects.create(libro=cls.libro, codigo_barras='T-002', ubicacion='Sala A / Estante 1')
+        cls.ej1 = Ejemplar.objects.create(libro=cls.libro, codigo_barras='T-001', sala='A', estante='1')
+        cls.ej2 = Ejemplar.objects.create(libro=cls.libro, codigo_barras='T-002', sala='A', estante='1')
         cls.ej_perdido = Ejemplar.objects.create(libro=cls.libro_sin_stock, codigo_barras='T-003',
-                                                 ubicacion='Sala B', estado='perdido')
-        cls.ej_libre = Ejemplar.objects.create(libro=cls.libro, codigo_barras='T-004', ubicacion='Sala A / Estante 2')
+                                                 sala='B', estante='1', estado='perdido')
+        cls.ej_libre = Ejemplar.objects.create(libro=cls.libro, codigo_barras='T-004', sala='A', estante='2')
 
         cls.bib_user = User.objects.create_user('biblio', 'biblio@uni.edu', CLAVE,
                                                 first_name='Bea', last_name='Bibliotecaria')
-        cls.bib = UsuarioBiblioteca.objects.create(user=cls.bib_user, codigo_universitario='B-001',
-                                                   identificacion='100', rol='bibliotecario')
+        cls.bib = crear_bibliotecario(cls.bib_user, 'B-001', '100')
         cls.lec_user = User.objects.create_user('lector', 'lector@uni.edu', CLAVE,
                                                 first_name='Luis', last_name='Lector')
-        cls.lec = UsuarioBiblioteca.objects.create(user=cls.lec_user, codigo_universitario='E-001',
-                                                   identificacion='200', rol='estudiante',
-                                                   carrera='Ingeniería de Sistemas')
+        cls.lec = crear_lector(cls.lec_user, 'E-001', '200', carrera='Ingeniería de Sistemas')
 
     def setUp(self):
         self.c_bib = self.client_class()
@@ -75,7 +86,7 @@ class BaseBiblioteca(TestCase):
             if estado in ('activo', 'vencido'):
                 ejemplar.estado = 'prestado'
                 ejemplar.save()
-        return Prestamo.objects.create(usuario=usuario or self.lec, ejemplar=ejemplar, estado=estado, **datos)
+        return Prestamo.objects.create(lector=(usuario or self.lec).lector, ejemplar=ejemplar, estado=estado, **datos)
 
 
 # ---------------------------------------------------------------------------
@@ -136,10 +147,18 @@ class RutasYPermisosTest(BaseBiblioteca):
             with self.subTest(url=url):
                 self.assertEqual(self.c_lec.get(url).status_code, 200)
 
-    def test_bibliotecario_accede_a_todo(self):
-        for url in self.rutas_lector() + self.rutas_bibliotecario():
+    def rutas_solo_lector(self):
+        # Pedir libros y ver «mis préstamos» es propio del lector (especialización disjunta)
+        return [reverse('usuarios:mi_historial'), reverse('prestamos:prestamo_solicitar', args=[self.ej_libre.pk])]
+
+    def test_bibliotecario_accede_a_todo_menos_lo_del_lector(self):
+        solo_lector = self.rutas_solo_lector()
+        for url in [u for u in self.rutas_lector() if u not in solo_lector] + self.rutas_bibliotecario():
             with self.subTest(url=url):
                 self.assertEqual(self.c_bib.get(url).status_code, 200)
+        for url in solo_lector:
+            with self.subTest(url=url):
+                self.assertEqual(self.c_bib.get(url).status_code, 302)
 
     def test_lector_no_accede_a_rutas_de_bibliotecario(self):
         for url in self.rutas_bibliotecario():
@@ -157,8 +176,7 @@ class RutasYPermisosTest(BaseBiblioteca):
 
     def test_lector_solo_ve_sus_propios_prestamos(self):
         otro_user = User.objects.create_user('otro', 'otro@uni.edu', CLAVE)
-        otro = UsuarioBiblioteca.objects.create(user=otro_user, codigo_universitario='E-999',
-                                                identificacion='999', rol='estudiante')
+        otro = crear_lector(otro_user, 'E-999', '999')
         ajeno = self.prestamo(usuario=otro)
         propio = self.prestamo(ejemplar=self.ej2)
         self.assertEqual(self.c_lec.get(reverse('prestamos:prestamo_detail', args=[propio.pk])).status_code, 200)
@@ -201,9 +219,9 @@ class FormulariosTest(BaseBiblioteca):
         self.assertCampos(self.c_bib, reverse('catalogos:libro_edit', args=[self.libro.pk]),
                           ['isbn', 'titulo', 'autores', 'editorial', 'anio_publicacion', 'categoria', 'descripcion', 'portada'])
         self.assertCampos(self.c_bib, reverse('catalogos:ejemplar_create', args=[self.libro.pk]),
-                          ['codigo_barras', 'ubicacion', 'estado', 'notas', 'fecha_adquisicion'])
+                          ['codigo_barras', 'sala', 'estante', 'estado', 'notas', 'fecha_adquisicion'])
         self.assertCampos(self.c_bib, reverse('catalogos:ejemplar_edit', args=[self.ej1.pk]),
-                          ['codigo_barras', 'ubicacion', 'estado', 'notas', 'fecha_adquisicion'])
+                          ['codigo_barras', 'sala', 'estante', 'estado', 'notas', 'fecha_adquisicion'])
         self.assertCampos(self.c_bib, reverse('catalogos:autor_create'), ['nombre', 'apellido', 'biografia'])
         self.assertCampos(self.c_bib, reverse('catalogos:libro_delete', args=[self.libro.pk]), [])
         self.assertCampos(self.c_bib, reverse('catalogos:ejemplar_delete', args=[self.ej1.pk]), [])
@@ -211,7 +229,7 @@ class FormulariosTest(BaseBiblioteca):
     def test_formularios_de_usuarios(self):
         self.assertCampos(self.c_bib, reverse('usuarios:usuario_create'),
                           ['first_name', 'last_name', 'email', 'username', 'password', 'codigo_universitario',
-                           'identificacion', 'rol', 'carrera', 'estado', 'telefono'])
+                           'identificacion', 'rol', 'carrera', 'turno', 'estado', 'telefono'])
         self.assertCampos(self.c_bib, reverse('usuarios:usuario_edit', args=[self.lec.pk]),
                           ['first_name', 'last_name', 'email', 'codigo_universitario', 'identificacion',
                            'rol', 'carrera', 'estado', 'telefono', 'nueva_password'])
@@ -230,7 +248,7 @@ class FormulariosTest(BaseBiblioteca):
         self.assertCampos(self.c_bib, reverse('prestamos:devolucion_registrar', args=[p_tarde.pk]),
                           ['fecha_devolucion', 'observacion', 'detalle_observacion', 'multa_pagada'])
         self.assertCampos(self.c_bib, reverse('prestamos:prestamo_reportar_perdida', args=[p_act.pk]), [])
-        self.assertCampos(self.c_bib, reverse('prestamos:multa_config'), ['tarifa_por_dia'])
+        self.assertCampos(self.c_bib, reverse('prestamos:multa_config'), ['valor_dia'])
 
     def test_solicitud_del_lector(self):
         self.assertCampos(self.c_lec, reverse('prestamos:prestamo_solicitar', args=[self.ej1.pk]), [])
@@ -248,14 +266,14 @@ class FlujoPrestamosTest(BaseBiblioteca):
     def test_solicitar_crea_prestamo_pendiente(self):
         r = self.c_lec.post(reverse('prestamos:prestamo_solicitar', args=[self.ej1.pk]), follow=True)
         self.assertContains(r, 'Solicitud de préstamo enviada')
-        p = Prestamo.objects.get(usuario=self.lec, ejemplar=self.ej1)
+        p = Prestamo.objects.get(lector=self.lec.lector, ejemplar=self.ej1)
         self.assertEqual(p.estado, 'pendiente')
 
     def test_no_se_solicita_dos_veces_el_mismo_ejemplar(self):
         self.prestamo(estado='pendiente')
         r = self.c_lec.post(reverse('prestamos:prestamo_solicitar', args=[self.ej1.pk]), follow=True)
         self.assertContains(r, 'Ya tienes una solicitud')
-        self.assertEqual(Prestamo.objects.filter(usuario=self.lec, ejemplar=self.ej1).count(), 1)
+        self.assertEqual(Prestamo.objects.filter(lector=self.lec.lector, ejemplar=self.ej1).count(), 1)
 
     def test_usuario_bloqueado_no_puede_solicitar(self):
         self.lec.estado = 'bloqueado'
@@ -277,7 +295,7 @@ class FlujoPrestamosTest(BaseBiblioteca):
         p.refresh_from_db()
         self.ej1.refresh_from_db()
         self.assertEqual((p.estado, p.fecha_prestamo, p.fecha_vencimiento, p.aprobado_por),
-                         ('activo', timezone.localdate(), vence, self.bib))
+                         ('activo', timezone.localdate(), vence, self.bib.bibliotecario))
         self.assertEqual(self.ej1.estado, 'prestado')
 
     def test_aprobar_valida_fechas(self):
@@ -358,10 +376,10 @@ class FlujoPrestamosTest(BaseBiblioteca):
         p1 = self.prestamo(prestado_hace=20, vence_en=-2)
         d1 = Devolucion.objects.create(prestamo=p1, fecha_devolucion=timezone.localdate())
         self.assertEqual(d1.monto_multa, Decimal('1000.00'))
-        r = self.c_bib.post(reverse('prestamos:multa_config'), {'tarifa_por_dia': '800'}, follow=True)
+        r = self.c_bib.post(reverse('prestamos:multa_config'), {'valor_dia': '800'}, follow=True)
         self.assertContains(r, 'Nueva tarifa de multa')
-        self.assertEqual(ConfiguracionMulta.tarifa_vigente(), Decimal('800'))
-        self.assertEqual(ConfiguracionMulta.objects.filter(activa=True).count(), 1)
+        self.assertEqual(TarifaMulta.valor_vigente(), Decimal('800'))
+        self.assertEqual(TarifaMulta.objects.filter(activa=True).count(), 1)
         p2 = self.prestamo(ejemplar=self.ej2, prestado_hace=20, vence_en=-2)
         d2 = Devolucion.objects.create(prestamo=p2, fecha_devolucion=timezone.localdate())
         d1.refresh_from_db()
@@ -370,9 +388,9 @@ class FlujoPrestamosTest(BaseBiblioteca):
     def test_tarifa_invalida(self):
         for valor in ['0', '-5', 'abc']:
             with self.subTest(valor=valor):
-                r = self.c_bib.post(reverse('prestamos:multa_config'), {'tarifa_por_dia': valor})
+                r = self.c_bib.post(reverse('prestamos:multa_config'), {'valor_dia': valor})
                 self.assertEqual(r.status_code, 200)
-                self.assertEqual(ConfiguracionMulta.objects.count(), 1)
+                self.assertEqual(TarifaMulta.objects.count(), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -413,12 +431,12 @@ class CatalogoTest(BaseBiblioteca):
 
     def test_crud_ejemplar(self):
         self.c_bib.post(reverse('catalogos:ejemplar_create', args=[self.libro.pk]),
-                        {'codigo_barras': 'T-NUEVO', 'ubicacion': 'Sala C', 'estado': 'disponible'})
+                        {'codigo_barras': 'T-NUEVO', 'sala': 'C', 'estante': '1', 'estado': 'disponible'})
         ej = Ejemplar.objects.get(codigo_barras='T-NUEVO')
         self.c_bib.post(reverse('catalogos:ejemplar_edit', args=[ej.pk]),
-                        {'codigo_barras': 'T-NUEVO', 'ubicacion': 'Sala D', 'estado': 'mantenimiento'})
+                        {'codigo_barras': 'T-NUEVO', 'sala': 'D', 'estante': '4', 'estado': 'mantenimiento'})
         ej.refresh_from_db()
-        self.assertEqual((ej.ubicacion, ej.estado), ('Sala D', 'mantenimiento'))
+        self.assertEqual((ej.sala, ej.estante, ej.estado), ('D', '4', 'mantenimiento'))
         self.c_bib.post(reverse('catalogos:ejemplar_delete', args=[ej.pk]))
         self.assertFalse(Ejemplar.objects.filter(pk=ej.pk).exists())
 
@@ -459,7 +477,7 @@ class UsuariosTest(BaseBiblioteca):
 
     def test_crear_usuario_con_estado(self):
         self.c_bib.post(reverse('usuarios:usuario_create'), self.datos_nuevo())
-        self.assertEqual(UsuarioBiblioteca.objects.get(codigo_universitario='E-NUEVO').estado, 'bloqueado')
+        self.assertEqual(Usuario.objects.get(codigo_universitario='E-NUEVO').estado, 'bloqueado')
 
     def test_crear_usuario_rechaza_duplicados_y_claves_debiles(self):
         casos = {'codigo_universitario': 'E-001', 'identificacion': '200', 'email': 'LECTOR@uni.edu',
@@ -502,7 +520,7 @@ class UsuariosTest(BaseBiblioteca):
         self.prestamo(estado='devuelto')
         r = self.c_bib.post(reverse('usuarios:usuario_delete', args=[self.lec.pk]), follow=True)
         self.assertContains(r, 'No se puede eliminar')
-        self.assertTrue(UsuarioBiblioteca.objects.filter(pk=self.lec.pk).exists())
+        self.assertTrue(Usuario.objects.filter(pk=self.lec.pk).exists())
 
     def test_eliminar_usuario_sin_prestamos(self):
         self.c_bib.post(reverse('usuarios:usuario_delete', args=[self.lec.pk]))
@@ -666,7 +684,7 @@ class MisPrestamosTest(BaseBiblioteca):
         p1 = self.prestamo(ejemplar=self.ej1, prestado_hace=20, vence_en=-2)
         Devolucion.objects.create(prestamo=p1, fecha_devolucion=timezone.localdate())
         p2 = self.prestamo(ejemplar=self.ej2, prestado_hace=20, vence_en=-1)
-        Devolucion.objects.create(prestamo=p2, fecha_devolucion=timezone.localdate(), multa_pagada=True)
+        Devolucion(prestamo=p2, fecha_devolucion=timezone.localdate()).save(multa_pagada=True)
         r = self.c_lec.get(reverse('usuarios:mi_historial'))
         self.assertEqual(r.context['multas_pendientes_total'], Decimal('1000.00'))
         self.assertContains(r, 'Por pagar')
@@ -958,7 +976,7 @@ class ReglasAuditoriaTest(BaseBiblioteca):
 
     def test_aprobar_rechaza_las_otras_solicitudes_del_ejemplar(self):
         otro_user = User.objects.create_user('otro', 'otro@uni.edu', CLAVE)
-        otro = UsuarioBiblioteca.objects.create(user=otro_user, codigo_universitario='E-777', identificacion='777')
+        otro = crear_lector(otro_user, 'E-777', '777')
         p1 = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
         p2 = self.prestamo(ejemplar=self.ej_libre, estado='pendiente', usuario=otro)
         r = self.c_bib.post(reverse('prestamos:prestamo_aprobar', args=[p1.pk]), {'fecha_vencimiento': hace(-15).isoformat()}, follow=True)
@@ -971,14 +989,14 @@ class ReglasAuditoriaTest(BaseBiblioteca):
         p1 = self.prestamo(ejemplar=self.ej_libre, estado='pendiente')
         self.ej_libre.estado = 'prestado'; self.ej_libre.save()
         with self.assertRaises(ValueError):
-            p1.aprobar(self.bib)
+            p1.aprobar(self.bib.bibliotecario)
         p1.refresh_from_db()
         self.assertEqual(p1.estado, 'pendiente')
 
     def test_estado_del_ejemplar_no_se_cambia_a_mano_con_prestamo_en_curso(self):
         p = self.prestamo(ejemplar=self.ej1)
         url = reverse('catalogos:ejemplar_edit', args=[self.ej1.pk])
-        self.c_bib.post(url, {'codigo_barras': 'T-001', 'ubicacion': 'Sala A', 'estado': 'disponible', 'notas': '', 'fecha_adquisicion': ''})
+        self.c_bib.post(url, {'codigo_barras': 'T-001', 'sala': 'A', 'estante': '1', 'estado': 'disponible', 'notas': '', 'fecha_adquisicion': ''})
         self.ej1.refresh_from_db()
         self.assertEqual(self.ej1.estado, 'prestado')
         self.assertContains(self.c_bib.get(url), 'Tiene un préstamo en curso')
@@ -986,7 +1004,7 @@ class ReglasAuditoriaTest(BaseBiblioteca):
     def test_prestado_no_se_elige_a_mano(self):
         url = reverse('catalogos:ejemplar_edit', args=[self.ej_libre.pk])
         self.assertNotContains(self.c_bib.get(url), 'value="prestado"')
-        r = self.c_bib.post(url, {'codigo_barras': 'T-004', 'ubicacion': 'Sala A', 'estado': 'prestado', 'notas': '', 'fecha_adquisicion': ''})
+        r = self.c_bib.post(url, {'codigo_barras': 'T-004', 'sala': 'A', 'estante': '2', 'estado': 'prestado', 'notas': '', 'fecha_adquisicion': ''})
         self.ej_libre.refresh_from_db()
         self.assertEqual(self.ej_libre.estado, 'disponible')
         self.assertEqual(r.status_code, 200)  # vuelve al formulario con el error de opción inválida
@@ -1061,18 +1079,19 @@ class RestriccionesBDTest(BaseBiblioteca):
                 crear()
 
     def test_la_bd_rechaza_datos_invalidos_aunque_se_salte_el_formulario(self):
-        self.rechaza(lambda: Prestamo.objects.create(usuario=self.lec, ejemplar=self.ej_libre, estado='activo',
+        self.rechaza(lambda: Prestamo.objects.create(lector=self.lec.lector, ejemplar=self.ej_libre, estado='activo',
                                                      fecha_prestamo=hace(0), fecha_vencimiento=hace(5)))
-        self.rechaza(lambda: Prestamo.objects.create(usuario=self.lec, ejemplar=self.ej_libre, estado='activo'))
-        self.rechaza(lambda: Prestamo.objects.create(usuario=self.lec, ejemplar=self.ej_libre, estado='inventado'))
-        self.rechaza(lambda: ConfiguracionMulta.objects.create(tarifa_por_dia=Decimal('-5'), activa=False))
-        self.rechaza(lambda: ConfiguracionMulta.objects.create(tarifa_por_dia=Decimal('0'), activa=False))
+        self.rechaza(lambda: Prestamo.objects.create(lector=self.lec.lector, ejemplar=self.ej_libre, estado='activo'))
+        self.rechaza(lambda: Prestamo.objects.create(lector=self.lec.lector, ejemplar=self.ej_libre, estado='inventado'))
+        self.rechaza(lambda: TarifaMulta.objects.create(valor_dia=Decimal('-5'), activa=False))
+        self.rechaza(lambda: TarifaMulta.objects.create(valor_dia=Decimal('0'), activa=False))
         self.rechaza(lambda: Libro.objects.create(isbn='X-0', titulo='x', editorial='x', anio_publicacion=0))
         self.rechaza(lambda: Ejemplar.objects.filter(pk=self.ej1.pk).update(estado='robado'))
-        self.rechaza(lambda: UsuarioBiblioteca.objects.filter(pk=self.lec.pk).update(rol='rector'))
+        self.rechaza(lambda: Lector.objects.filter(pk=self.lec.pk).update(rol='rector'))
+        self.rechaza(lambda: Usuario.objects.filter(pk=self.lec.pk).update(tipo='rector'))
         p = self.prestamo(ejemplar=self.ej2, estado='devuelto', prestado_hace=10, vence_en=-1)
-        d = Devolucion.objects.create(prestamo=p)  # save() calcula la multa; se fuerza un negativo con update
-        self.rechaza(lambda: Devolucion.objects.filter(pk=d.pk).update(monto_multa=Decimal('-100')))
+        d = Devolucion.objects.create(prestamo=p, fecha_devolucion=hace(0))  # save() crea la multa; se fuerza un negativo con update
+        self.rechaza(lambda: Multa.objects.filter(devolucion=d).update(monto=Decimal('-100')))
 
     def test_formulario_muestra_el_mensaje_de_la_restriccion(self):
         r = self.c_bib.post(reverse('catalogos:libro_create'), {'isbn': '978-1', 'titulo': 'Viejo', 'editorial': 'X',
@@ -1103,7 +1122,7 @@ class PersonajeTest(BaseBiblioteca):
 
     def test_docente_recibe_uno_con_birrete(self):
         u = User.objects.create_user('profe', 'profe@uni.edu', CLAVE)
-        UsuarioBiblioteca.objects.create(user=u, codigo_universitario='D-1', identificacion='D1', rol='docente')
+        crear_lector(u, 'D-1', 'D1', rol='docente')
         c = self.client_class(); c.force_login(u)
         self.assertRegex(self.personaje(c), r'^img/personajes/docente-0[1-4]\.webp$')
 
@@ -1148,3 +1167,264 @@ class DevolucionPagoTest(BaseBiblioteca):
         d = Devolucion.objects.get(prestamo=p)
         self.assertEqual(d.monto_multa, 0)
         self.assertFalse(d.multa_pagada)
+
+
+# ---------------------------------------------------------------------------
+# Especialización de usuarios: total y disjunta (lector | bibliotecario)
+# ---------------------------------------------------------------------------
+class EspecializacionTest(BaseBiblioteca):
+    def datos_nuevo(self, n, rol, carrera=''):
+        return {'first_name': 'Nuevo', 'last_name': rol, 'email': f'n{n}@uni.edu', 'username': f'nuevo{n}', 'password': CLAVE,
+                'codigo_universitario': f'N-{n}', 'identificacion': f'50{n}', 'rol': rol, 'carrera': carrera,
+                'estado': 'activo', 'telefono': ''}
+
+    def assertExactamenteUnSubtipo(self):
+        for u in Usuario.objects.all():
+            with self.subTest(usuario=u.codigo_universitario):
+                es_lector = Lector.objects.filter(pk=u.pk).exists()
+                es_bib = Bibliotecario.objects.filter(pk=u.pk).exists()
+                self.assertTrue(es_lector != es_bib, 'debe estar en un subtipo y solo en uno')
+                self.assertEqual(u.tipo, 'lector' if es_lector else 'bibliotecario', 'el discriminador no coincide')
+
+    def test_el_formulario_crea_cada_usuario_en_su_subtipo(self):
+        for n, (rol, carrera) in enumerate([('bibliotecario', 'Se ignora'), ('docente', 'Derecho'), ('estudiante', 'Música')]):
+            self.c_bib.post(reverse('usuarios:usuario_create'), self.datos_nuevo(n, rol, carrera))
+        bib = Usuario.objects.get(codigo_universitario='N-0')
+        docente = Usuario.objects.get(codigo_universitario='N-1')
+        estudiante = Usuario.objects.get(codigo_universitario='N-2')
+        self.assertEqual((bib.tipo, bib.rol), ('bibliotecario', 'bibliotecario'))
+        self.assertEqual((docente.tipo, docente.lector.rol, docente.lector.carrera), ('lector', 'docente', 'Derecho'))
+        self.assertEqual((estudiante.tipo, estudiante.lector.rol), ('lector', 'estudiante'))
+        self.assertExactamenteUnSubtipo()
+
+    def test_lector_cambia_de_rol_pero_no_pasa_a_bibliotecario(self):
+        url = reverse('usuarios:usuario_edit', args=[self.lec.pk])
+        datos = {'first_name': 'Luis', 'last_name': 'Lector', 'email': 'lector@uni.edu', 'codigo_universitario': 'E-001',
+                 'identificacion': '200', 'carrera': 'Derecho', 'estado': 'activo', 'telefono': '', 'nueva_password': ''}
+        self.c_bib.post(url, dict(datos, rol='docente'))
+        self.lec.lector.refresh_from_db()
+        self.assertEqual((self.lec.lector.rol, self.lec.lector.carrera), ('docente', 'Derecho'))
+        r = self.c_bib.post(url, dict(datos, rol='bibliotecario'))
+        self.assertTrue(r.context['form'].errors.get('rol'))
+        self.assertFalse(Bibliotecario.objects.filter(pk=self.lec.pk).exists())
+        self.assertExactamenteUnSubtipo()
+
+    def test_bibliotecario_no_solicita_prestamos(self):
+        r = self.c_bib.post(reverse('prestamos:prestamo_solicitar', args=[self.ej_libre.pk]), follow=True)
+        self.assertContains(r, 'El personal bibliotecario no solicita préstamos')
+        self.assertFalse(Prestamo.objects.exists())
+
+    def test_bibliotecario_sin_mis_prestamos(self):
+        r = self.c_bib.get(reverse('usuarios:mi_historial'), follow=True)
+        self.assertRedirects(r, reverse('reportes:dashboard'))
+        self.assertNotContains(self.c_bib.get(reverse('reportes:dashboard')), reverse('usuarios:mi_historial'))
+        self.assertContains(self.c_lec.get(reverse('catalogos:inicio')), reverse('usuarios:mi_historial'))
+
+    def test_ficha_del_bibliotecario_no_habla_de_carrera(self):
+        r = self.c_bib.get(reverse('usuarios:usuario_detail', args=[self.bib.pk]))
+        self.assertNotContains(r, 'Sin carrera registrada')
+        self.assertContains(self.c_bib.get(reverse('usuarios:usuario_detail', args=[self.lec.pk])), 'Ingeniería de Sistemas')
+
+    def test_filtro_de_usuarios_por_rol(self):
+        u = User.objects.create_user('profe', 'profe@uni.edu', CLAVE)
+        profe = crear_lector(u, 'D-1', 'D1', rol='docente')
+        ids = lambda rol: {x.pk for x in self.c_bib.get(reverse('usuarios:usuario_list'), {'rol': rol}).context['usuarios']}
+        self.assertEqual(ids('bibliotecario'), {self.bib.pk})
+        self.assertEqual(ids('docente'), {profe.pk})
+        self.assertEqual(ids('estudiante'), {self.lec.pk})
+
+    def test_la_bd_no_deja_que_un_bibliotecario_sea_lector_de_un_prestamo(self):
+        # La llave foránea prestamo.lector_id apunta a la tabla lector: un bibliotecario no está ahí
+        from django.db import IntegrityError, connection, transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Prestamo.objects.create(lector_id=self.bib.pk, ejemplar=self.ej_libre, estado='pendiente')
+                connection.cursor().execute('SET CONSTRAINTS ALL IMMEDIATE')  # verifica ya la llave diferida
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                p = self.prestamo(estado='pendiente')
+                Prestamo.objects.filter(pk=p.pk).update(aprobado_por_id=self.lec.pk)  # un lector no aprueba
+                connection.cursor().execute('SET CONSTRAINTS ALL IMMEDIATE')
+
+
+# ---------------------------------------------------------------------------
+# Multa en su propia tabla: 0 o 1 por devolución, con la tarifa con que se calculó
+# ---------------------------------------------------------------------------
+class MultaTablaTest(BaseBiblioteca):
+    def devolver(self, prestamo, **kwargs):
+        d = Devolucion(prestamo=prestamo, fecha_devolucion=hace(0), registrado_por=self.bib.bibliotecario)
+        d.save(**kwargs)
+        return d
+
+    def test_a_tiempo_no_crea_multa(self):
+        d = self.devolver(self.prestamo(prestado_hace=3, vence_en=5))
+        self.assertFalse(Multa.objects.filter(devolucion=d).exists())
+        self.assertIsNone(d.multa_registrada)
+
+    def test_con_retraso_crea_una_multa_con_la_tarifa_vigente(self):
+        d = self.devolver(self.prestamo(prestado_hace=20, vence_en=-3))
+        m = Multa.objects.get(devolucion=d)
+        self.assertEqual((m.tarifa, m.dias_retraso(), m.monto), (self.tarifa, 3, Decimal('1500.00')))
+        self.assertEqual((m.pagada, m.fecha_pago, m.cobrada_por), (False, None, None))
+
+    def test_pagada_al_devolver_guarda_fecha_y_quien_cobro(self):
+        d = self.devolver(self.prestamo(prestado_hace=20, vence_en=-2), multa_pagada=True)
+        m = d.multa
+        self.assertEqual((m.pagada, m.fecha_pago, m.cobrada_por), (True, hace(0), self.bib.bibliotecario))
+
+    def test_pago_posterior_registra_fecha_y_bibliotecario(self):
+        p = self.prestamo(prestado_hace=20, vence_en=-2)
+        self.devolver(p)
+        self.c_bib.post(reverse('prestamos:multa_pagar', args=[p.pk]))
+        m = Multa.objects.get(devolucion__prestamo=p)
+        self.assertEqual((m.pagada, m.fecha_pago, m.cobrada_por), (True, timezone.localdate(), self.bib.bibliotecario))
+        r = self.c_bib.get(reverse('prestamos:prestamo_detail', args=[p.pk]))
+        self.assertContains(r, 'Pagada el')
+        self.assertContains(r, '2 días × $500')
+
+    def test_cada_multa_conserva_su_tarifa(self):
+        m1 = self.devolver(self.prestamo(prestado_hace=20, vence_en=-2)).multa
+        self.c_bib.post(reverse('prestamos:multa_config'), {'valor_dia': '800'})
+        nueva = TarifaMulta.vigente()
+        m2 = self.devolver(self.prestamo(ejemplar=self.ej2, prestado_hace=20, vence_en=-2)).multa
+        m1.refresh_from_db()
+        self.assertEqual((m1.tarifa, m1.monto), (self.tarifa, Decimal('1000.00')))
+        self.assertEqual((m2.tarifa, m2.monto), (nueva, Decimal('1600.00')))
+
+    def test_no_se_borra_una_tarifa_ni_una_devolucion_con_multas(self):
+        from django.db.models import ProtectedError
+        d = self.devolver(self.prestamo(prestado_hace=20, vence_en=-2))
+        with self.assertRaises(ProtectedError):
+            self.tarifa.delete()
+        with self.assertRaises(ProtectedError):
+            d.delete()
+
+    def test_la_bd_rechaza_multas_incoherentes(self):
+        from django.db import IntegrityError, transaction
+        d = self.devolver(self.prestamo(prestado_hace=20, vence_en=-2))
+        casos = [{'monto': Decimal('0')},                           # una multa existe solo si hay monto
+                 {'pagada': True},                                  # pagada sin fecha de pago
+                 {'fecha_pago': hace(0)}]                           # pendiente con fecha de pago
+        for cambio in casos:
+            with self.subTest(cambio=cambio):
+                with self.assertRaises(IntegrityError):
+                    with transaction.atomic():
+                        Multa.objects.filter(devolucion=d).update(**cambio)
+        with self.assertRaises(IntegrityError):                     # una sola multa por devolución
+            with transaction.atomic():
+                Multa.objects.create(devolucion=d, tarifa=self.tarifa, monto=Decimal('100'))
+
+
+# ---------------------------------------------------------------------------
+# Ubicación del ejemplar en dos columnas: sala y estante
+# ---------------------------------------------------------------------------
+class UbicacionTest(BaseBiblioteca):
+    def test_sala_y_estante_obligatorios_y_texto_combinado(self):
+        url = reverse('catalogos:ejemplar_create', args=[self.libro.pk])
+        r = self.c_bib.post(url, {'codigo_barras': 'T-SIN', 'sala': '', 'estante': '', 'estado': 'disponible'})
+        self.assertTrue(r.context['form'].errors.get('sala'))
+        self.assertTrue(r.context['form'].errors.get('estante'))
+        self.assertFalse(Ejemplar.objects.filter(codigo_barras='T-SIN').exists())
+        self.assertEqual(self.ej1.ubicacion, 'Sala A / Estante 1')
+        self.assertContains(self.c_lec.get(reverse('catalogos:libro_detail', args=[self.libro.pk])), 'Sala A / Estante 1')
+
+    def test_la_migracion_separa_el_texto_viejo(self):
+        import importlib
+        patron = importlib.import_module('apps.catalogos.migrations.0004_tablas_y_ubicacion').PATRON
+        casos = {'Sala A / Estante 1': ('A', '1'), 'sala b/estante 12': ('b', '12'),
+                 'Sala Norte / Estante 3 / Nivel 2': ('Norte', '3')}
+        for texto, esperado in casos.items():
+            with self.subTest(texto=texto):
+                m = patron.match(texto)
+                self.assertEqual((m.group('sala'), m.group('estante')), esperado)
+        self.assertIsNone(patron.match('Depósito'))  # formato libre: la migración lo guarda entero en sala
+
+
+# ---------------------------------------------------------------------------
+# Turno: atributo propio (y opcional) del bibliotecario
+# ---------------------------------------------------------------------------
+class TurnoBibliotecarioTest(BaseBiblioteca):
+    def datos_edicion_bib(self, **cambios):
+        datos = {'first_name': 'Bea', 'last_name': 'Bibliotecaria', 'email': 'biblio@uni.edu', 'codigo_universitario': 'B-001',
+                 'identificacion': '100', 'rol': 'bibliotecario', 'estado': 'activo', 'telefono': '', 'nueva_password': ''}
+        datos.update(cambios)
+        return datos
+
+    def test_es_opcional(self):
+        self.assertEqual(self.bib.bibliotecario.turno, '')
+        self.assertEqual(self.bib.get_turno_display(), '')
+
+    def test_crear_bibliotecario_con_turno(self):
+        self.c_bib.post(reverse('usuarios:usuario_create'), {
+            'first_name': 'Tomas', 'last_name': 'Noche', 'email': 'tn@uni.edu', 'username': 'tnoche', 'password': CLAVE,
+            'codigo_universitario': 'B-002', 'identificacion': '101', 'rol': 'bibliotecario', 'turno': 'noche',
+            'carrera': '', 'estado': 'activo', 'telefono': ''})
+        nuevo = Usuario.objects.get(codigo_universitario='B-002')
+        self.assertEqual((nuevo.tipo, nuevo.bibliotecario.turno), ('bibliotecario', 'noche'))
+
+    def test_editar_turno_y_verlo_en_la_ficha_y_la_lista(self):
+        self.c_bib.post(reverse('usuarios:usuario_edit', args=[self.bib.pk]), self.datos_edicion_bib(turno='tarde'))
+        self.bib.bibliotecario.refresh_from_db()
+        self.assertEqual(self.bib.bibliotecario.turno, 'tarde')
+        self.assertContains(self.c_bib.get(reverse('usuarios:usuario_detail', args=[self.bib.pk])), 'Turno de la tarde')
+        self.assertContains(self.c_bib.get(reverse('usuarios:usuario_list')), 'Turno de la tarde')
+
+    def test_turno_invalido_se_rechaza(self):
+        r = self.c_bib.post(reverse('usuarios:usuario_edit', args=[self.bib.pk]), self.datos_edicion_bib(turno='madrugada'))
+        self.assertTrue(r.context['form'].errors.get('turno'))
+        from django.db import IntegrityError, transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Bibliotecario.objects.filter(pk=self.bib.pk).update(turno='madrugada')
+
+    def test_el_lector_no_tiene_turno(self):
+        html = self.c_bib.get(reverse('usuarios:usuario_edit', args=[self.lec.pk])).content.decode()
+        self.assertNotIn('name="turno"', html)
+        self.assertIn('name="carrera"', html)
+        html = self.c_bib.get(reverse('usuarios:usuario_edit', args=[self.bib.pk])).content.decode()
+        self.assertIn('name="turno"', html)
+        self.assertNotIn('name="carrera"', html)
+
+
+# ---------------------------------------------------------------------------
+# La base garantiza que la especialización es disjunta y que el tipo es coherente
+# (llave foránea compuesta de cada subtipo hacia el par (id, tipo) del usuario)
+# ---------------------------------------------------------------------------
+class SubtiposDisjuntosTest(BaseBiblioteca):
+    def rechaza(self, operacion):
+        from django.db import IntegrityError, connection, transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                operacion()
+                connection.cursor().execute('SET CONSTRAINTS ALL IMMEDIATE')  # verifica ya las llaves diferidas
+
+    def test_un_bibliotecario_no_cabe_en_lector_ni_al_reves(self):
+        self.rechaza(lambda: Lector.objects.create(usuario=self.bib, rol='estudiante'))
+        self.rechaza(lambda: Bibliotecario.objects.create(usuario=self.lec))
+
+    def test_no_se_cambia_el_tipo_de_quien_ya_esta_en_su_subtipo(self):
+        self.rechaza(lambda: Usuario.objects.filter(pk=self.lec.pk).update(tipo='bibliotecario'))
+        self.rechaza(lambda: Lector.objects.filter(pk=self.lec.pk).update(tipo='bibliotecario'))
+
+    def test_el_subtipo_toma_su_tipo_solo(self):
+        self.assertEqual(Lector.objects.get(pk=self.lec.pk).tipo, 'lector')
+        self.assertEqual(Bibliotecario.objects.get(pk=self.bib.pk).tipo, 'bibliotecario')
+
+
+# ---------------------------------------------------------------------------
+# Quién es bibliotecario lo decide la tabla bibliotecario, no la marca is_staff
+# ---------------------------------------------------------------------------
+class AccesoSoloBibliotecarioTest(BaseBiblioteca):
+    def test_lector_marcado_como_staff_no_entra_a_lo_del_personal(self):
+        self.lec_user.is_staff = True
+        self.lec_user.save()
+        r = self.c_lec.get(reverse('reportes:dashboard'))
+        self.assertRedirects(r, reverse('catalogos:libro_list'), fetch_redirect_response=False)
+
+    def test_cuenta_sin_ficha_de_biblioteca_no_entra_aunque_sea_superusuario(self):
+        jefe = User.objects.create_superuser('jefe', 'jefe@uni.edu', CLAVE)
+        c = self.client_class(); c.force_login(jefe)
+        self.assertEqual(c.get(reverse('usuarios:usuario_list')).status_code, 302)
+
+    def test_el_bibliotecario_si_entra(self):
+        self.assertEqual(self.c_bib.get(reverse('usuarios:usuario_list')).status_code, 200)

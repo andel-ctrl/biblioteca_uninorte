@@ -44,10 +44,12 @@ class LibroForm(forms.ModelForm):
 class EjemplarForm(forms.ModelForm):
     class Meta:
         model = Ejemplar
-        fields = ['codigo_barras', 'ubicacion', 'estado', 'notas', 'fecha_adquisicion']
+        fields = ['codigo_barras', 'sala', 'estante', 'estado', 'notas', 'fecha_adquisicion']
+        help_texts = {'sala': 'Solo la letra o el nombre de la sala: «A».', 'estante': 'Solo el número del estante: «3».'}
         widgets = {
             'codigo_barras': forms.TextInput(attrs={'class': 'form-control'}),
-            'ubicacion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Sala A / Estante 3'}),
+            'sala': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: A'}),
+            'estante': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 3'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'notas': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'fecha_adquisicion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),

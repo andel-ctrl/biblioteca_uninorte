@@ -2,14 +2,27 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
-from .models import UsuarioBiblioteca
+from .models import Usuario, Lector, Bibliotecario
+
+# Un solo selector «Rol» en pantalla; por dentro se traduce a la especialización:
+# bibliotecario → usuario tipo bibliotecario + fila en bibliotecario;
+# estudiante / docente → usuario tipo lector + fila en lector con ese rol.
+ROL_CHOICES = Lector.ROL_CHOICES + [('bibliotecario', 'Bibliotecario')]
+TURNO_OPCIONES = [('', 'Sin asignar')] + Bibliotecario.TURNO_CHOICES
 
 
-class UsuarioBibliotecaForm(forms.ModelForm):
-    """Edita User (nombres, correo, contraseña) + UsuarioBiblioteca en un solo formulario."""
+class UsuarioForm(forms.ModelForm):
+    """Edita la cuenta (nombres, correo, contraseña), el usuario y su subtipo en un solo formulario.
+    El tipo (lector o bibliotecario) no cambia al editar: un lector puede pasar de estudiante a
+    docente, pero no a bibliotecario (su historial de préstamos es de lector)."""
     first_name = forms.CharField(max_length=150, label='Nombres', widget=forms.TextInput(attrs={'class': 'form-control'}))
     last_name = forms.CharField(max_length=150, label='Apellidos', widget=forms.TextInput(attrs={'class': 'form-control'}))
     email = forms.EmailField(label='Correo electrónico', widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    rol = forms.ChoiceField(choices=ROL_CHOICES, label='Rol', widget=forms.Select(attrs={'class': 'form-select'}))
+    carrera = forms.CharField(max_length=150, required=False, label='Carrera',
+                              widget=forms.TextInput(attrs={'class': 'form-control'}))
+    turno = forms.ChoiceField(choices=TURNO_OPCIONES, required=False, label='Turno',
+                              widget=forms.Select(attrs={'class': 'form-select'}))
     nueva_password = forms.CharField(
         required=False, label='Nueva contraseña',
         help_text='Déjala vacía para conservar la contraseña actual.',
@@ -17,8 +30,8 @@ class UsuarioBibliotecaForm(forms.ModelForm):
     )
 
     class Meta:
-        model = UsuarioBiblioteca
-        fields = ['codigo_universitario', 'identificacion', 'rol', 'carrera', 'estado', 'telefono']
+        model = Usuario
+        fields = ['codigo_universitario', 'identificacion', 'estado', 'telefono']
         labels = {'telefono': 'Teléfono'}
         error_messages = {
             'codigo_universitario': {'unique': 'Ya existe un usuario con ese código universitario.'},
@@ -27,14 +40,12 @@ class UsuarioBibliotecaForm(forms.ModelForm):
         widgets = {
             'codigo_universitario': forms.TextInput(attrs={'class': 'form-control'}),
             'identificacion': forms.TextInput(attrs={'class': 'form-control'}),
-            'rol': forms.Select(attrs={'class': 'form-select'}),
-            'carrera': forms.TextInput(attrs={'class': 'form-control'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
     field_order = ['first_name', 'last_name', 'email', 'codigo_universitario', 'identificacion',
-                   'rol', 'carrera', 'estado', 'telefono', 'nueva_password']
+                   'rol', 'carrera', 'turno', 'estado', 'telefono', 'nueva_password']
 
     def __init__(self, *args, editor=None, **kwargs):
         # editor: el User que está editando, para impedir que se bloquee o se quite el rol a sí mismo
@@ -44,6 +55,18 @@ class UsuarioBibliotecaForm(forms.ModelForm):
         self.fields['first_name'].initial = user.first_name
         self.fields['last_name'].initial = user.last_name
         self.fields['email'].initial = user.email
+        # El rol ofrece solo opciones del mismo subtipo
+        if self.instance.es_bibliotecario():
+            self.fields['rol'].choices = [('bibliotecario', 'Bibliotecario')]
+            self.fields['rol'].initial = 'bibliotecario'
+            del self.fields['carrera']  # la carrera es del lector
+            self.fields['turno'].initial = self.instance.bibliotecario.turno
+        else:
+            self.fields['rol'].choices = Lector.ROL_CHOICES
+            self.fields['rol'].initial = self.instance.lector.rol
+            self.fields['rol'].help_text = 'Un lector no puede pasar a bibliotecario: para eso se crea otra cuenta.'
+            self.fields['carrera'].initial = self.instance.lector.carrera
+            del self.fields['turno']  # el turno es del bibliotecario
 
     def es_su_propia_cuenta(self):
         return self.editor is not None and self.editor.pk == self.instance.user_id
@@ -60,11 +83,6 @@ class UsuarioBibliotecaForm(forms.ModelForm):
             raise forms.ValidationError('No puedes bloquear tu propia cuenta.')
         return estado
 
-    def clean_rol(self):
-        rol = self.cleaned_data['rol']
-        if self.es_su_propia_cuenta() and self.instance.rol == 'bibliotecario' and rol != 'bibliotecario':
-            raise forms.ValidationError('No puedes quitarte a ti mismo el rol de bibliotecario.')
-        return rol
 
     def clean_nueva_password(self):
         password = self.cleaned_data.get('nueva_password')
@@ -75,6 +93,13 @@ class UsuarioBibliotecaForm(forms.ModelForm):
     def save(self, commit=True):
         with transaction.atomic():
             perfil = super().save(commit=commit)
+            if perfil.es_lector():
+                perfil.lector.rol = self.cleaned_data['rol']
+                perfil.lector.carrera = self.cleaned_data.get('carrera', '')
+                perfil.lector.save()
+            else:
+                perfil.bibliotecario.turno = self.cleaned_data.get('turno', '')
+                perfil.bibliotecario.save()
             user = perfil.user
             user.first_name = self.cleaned_data['first_name']
             user.last_name = self.cleaned_data['last_name']
@@ -86,7 +111,7 @@ class UsuarioBibliotecaForm(forms.ModelForm):
 
 
 class RegistroForm(forms.Form):
-    """Formulario que crea User + UsuarioBiblioteca al mismo tiempo."""
+    """Crea la cuenta (User), el usuario y su subtipo (lector o bibliotecario) en una transacción."""
     first_name = forms.CharField(max_length=150, label='Nombres', widget=forms.TextInput(attrs={'class': 'form-control'}))
     last_name = forms.CharField(max_length=150, label='Apellidos', widget=forms.TextInput(attrs={'class': 'form-control'}))
     email = forms.EmailField(label='Correo electrónico', widget=forms.EmailInput(attrs={'class': 'form-control'}))
@@ -94,9 +119,13 @@ class RegistroForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'}), label='Contraseña')
     codigo_universitario = forms.CharField(max_length=20, label='Código universitario', widget=forms.TextInput(attrs={'class': 'form-control'}))
     identificacion = forms.CharField(max_length=20, label='Identificación', widget=forms.TextInput(attrs={'class': 'form-control'}))
-    rol = forms.ChoiceField(choices=UsuarioBiblioteca.ROL_CHOICES, widget=forms.Select(attrs={'class': 'form-select'}))
-    carrera = forms.CharField(max_length=150, required=False, label='Carrera', widget=forms.TextInput(attrs={'class': 'form-control'}))
-    estado = forms.ChoiceField(choices=UsuarioBiblioteca.ESTADO_CHOICES, initial='activo', label='Estado', widget=forms.Select(attrs={'class': 'form-select'}))
+    rol = forms.ChoiceField(choices=ROL_CHOICES, label='Rol', widget=forms.Select(attrs={'class': 'form-select'}),
+                            help_text='Estudiante o docente: lector, puede pedir libros. Bibliotecario: aprueba y registra préstamos.')
+    carrera = forms.CharField(max_length=150, required=False, label='Carrera', help_text='Solo para lectores.',
+                              widget=forms.TextInput(attrs={'class': 'form-control'}))
+    turno = forms.ChoiceField(choices=TURNO_OPCIONES, required=False, label='Turno', help_text='Solo para bibliotecarios.',
+                              widget=forms.Select(attrs={'class': 'form-select'}))
+    estado = forms.ChoiceField(choices=Usuario.ESTADO_CHOICES, initial='activo', label='Estado', widget=forms.Select(attrs={'class': 'form-select'}))
     telefono = forms.CharField(max_length=20, required=False, label='Teléfono', widget=forms.TextInput(attrs={'class': 'form-control'}))
 
     def clean_email(self):
@@ -113,13 +142,13 @@ class RegistroForm(forms.Form):
 
     def clean_codigo_universitario(self):
         codigo = self.cleaned_data['codigo_universitario']
-        if UsuarioBiblioteca.objects.filter(codigo_universitario=codigo).exists():
+        if Usuario.objects.filter(codigo_universitario=codigo).exists():
             raise forms.ValidationError('Ya existe un usuario con ese código universitario.')
         return codigo
 
     def clean_identificacion(self):
         identificacion = self.cleaned_data['identificacion']
-        if UsuarioBiblioteca.objects.filter(identificacion=identificacion).exists():
+        if Usuario.objects.filter(identificacion=identificacion).exists():
             raise forms.ValidationError('Ya existe un usuario con esa identificación.')
         return identificacion
 
@@ -147,13 +176,17 @@ class RegistroForm(forms.Form):
                 first_name=data['first_name'],
                 last_name=data['last_name'],
             )
-            perfil = UsuarioBiblioteca.objects.create(
+            es_bibliotecario = data['rol'] == 'bibliotecario'
+            perfil = Usuario.objects.create(
                 user=user,
                 codigo_universitario=data['codigo_universitario'],
                 identificacion=data['identificacion'],
-                rol=data['rol'],
-                carrera=data.get('carrera', ''),
+                tipo='bibliotecario' if es_bibliotecario else 'lector',
                 estado=data['estado'],
                 telefono=data.get('telefono', ''),
             )
+            if es_bibliotecario:
+                Bibliotecario.objects.create(usuario=perfil, turno=data.get('turno', ''))
+            else:
+                Lector.objects.create(usuario=perfil, rol=data['rol'], carrera=data.get('carrera', ''))
         return perfil

@@ -5,13 +5,13 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 from django.contrib.auth import logout
 from django.contrib.auth import views as auth_views
-from apps.usuarios.decorators import es_bibliotecario_o_staff
+from apps.usuarios.decorators import es_bibliotecario
 
 
 def home_redirect(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    if es_bibliotecario_o_staff(request.user):
+    if es_bibliotecario(request.user):
         return redirect('reportes:dashboard')
     return redirect('catalogos:inicio')
 

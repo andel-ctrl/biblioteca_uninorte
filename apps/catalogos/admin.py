@@ -17,7 +17,7 @@ class CategoriaAdmin(admin.ModelAdmin):
 class EjemplarInline(admin.TabularInline):
     model = Ejemplar
     extra = 1
-    fields = ('codigo_barras', 'ubicacion', 'estado')
+    fields = ('codigo_barras', 'sala', 'estante', 'estado')
 
 
 @admin.register(Libro)
@@ -31,6 +31,6 @@ class LibroAdmin(admin.ModelAdmin):
 
 @admin.register(Ejemplar)
 class EjemplarAdmin(admin.ModelAdmin):
-    list_display = ('codigo_barras', 'libro', 'ubicacion', 'estado')
+    list_display = ('codigo_barras', 'libro', 'sala', 'estante', 'estado')
     list_filter = ('estado',)
     search_fields = ('codigo_barras', 'libro__titulo')

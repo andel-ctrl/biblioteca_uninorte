@@ -1,19 +1,20 @@
 import datetime
 from django import forms
 from django.utils import timezone
-from .models import Prestamo, Devolucion, ConfiguracionMulta
+from .models import Prestamo, Devolucion, TarifaMulta
 
 
 class TarifaMultaForm(forms.ModelForm):
     class Meta:
-        model = ConfiguracionMulta
-        fields = ['tarifa_por_dia']
+        model = TarifaMulta
+        fields = ['valor_dia']
+        labels = {'valor_dia': 'Tarifa por día ($)'}
         widgets = {
-            'tarifa_por_dia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'step': '50'}),
+            'valor_dia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'step': '50'}),
         }
 
-    def clean_tarifa_por_dia(self):
-        tarifa = self.cleaned_data['tarifa_por_dia']
+    def clean_valor_dia(self):
+        tarifa = self.cleaned_data['valor_dia']
         if tarifa <= 0:
             raise forms.ValidationError('La tarifa debe ser mayor que cero.')
         return tarifa
@@ -73,12 +74,11 @@ class AmpliarPlazoForm(forms.Form):
 class DevolucionForm(forms.ModelForm):
     class Meta:
         model = Devolucion
-        fields = ['fecha_devolucion', 'observacion', 'detalle_observacion', 'multa_pagada']
+        fields = ['fecha_devolucion', 'observacion', 'detalle_observacion']
         labels = {
             'fecha_devolucion': 'Fecha de devolución',
             'observacion': 'Observación del ejemplar',
             'detalle_observacion': 'Detalle de la observación',
-            'multa_pagada': 'La multa se pagó en este momento',
         }
         widgets = {
             # format ISO: el selector de fecha del navegador solo entiende AAAA-MM-DD
@@ -86,8 +86,11 @@ class DevolucionForm(forms.ModelForm):
             'observacion': forms.Select(attrs={'class': 'form-select'}),
             'detalle_observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2,
                                                          'placeholder': 'Detalles adicionales...'}),
-            'multa_pagada': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    # No es columna de devolución: indica si la multa (tabla multa) se pagó en el mismo momento
+    multa_pagada = forms.BooleanField(required=False, label='La multa se pagó en este momento',
+                                      widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
 
     def __init__(self, *args, prestamo=None, **kwargs):
         super().__init__(*args, **kwargs)
