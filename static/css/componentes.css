@@ -638,3 +638,33 @@ a.paginacion__num:hover { border-color: var(--borde-fuerte); background: var(--c
 .libro-carga i:nth-child(3) { animation-delay: 0.36s; opacity: 0.65; }
 @keyframes libro-pagina { 0%, 15% { transform: rotateY(0); } 65%, 100% { transform: rotateY(-180deg); } }
 @keyframes libro-aparece { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+
+/* --- Carga entre páginas: ocho libros en círculo (componentes/_carga_paginas.html) ---
+   Solo aparece si la página siguiente tarda (biblioteca.js). En cada libro una hoja pasa de
+   derecha a izquierda; el turno avanza alrededor del círculo y los libros que ya pasaron su
+   hoja se desvanecen, como la estela del indicador de carga tradicional. */
+.carga-pagina { position: fixed; inset: 0; z-index: 2000; display: grid; place-content: center; justify-items: center; gap: 0.9rem;
+    background: color-mix(in srgb, var(--c-hueso) 80%, transparent); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    opacity: 0; transition: opacity 220ms ease; }
+.carga-pagina[hidden] { display: none; }
+.carga-pagina.is-visible { opacity: 1; }
+.carga-pagina__libros { width: 132px; height: 132px; overflow: visible; }
+.carga-pagina__texto { margin: 0; font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--t-secundario); }
+.carga-pagina__texto::after { content: "…"; }
+.carga-libro { --dur: 1.6s; animation: carga-estela var(--dur) linear var(--retraso, 0s) infinite; }
+.carga-libro__tapa { fill: var(--c-borgona); }
+.carga-libro__hoja, .carga-libro__pasa { fill: var(--c-papel); stroke: var(--c-tinta); stroke-width: 0.55; stroke-linejoin: round; }
+/* La hoja gira sobre el lomo: el libro ya está trasladado a su lugar, así que (0, 0) es el lomo */
+.carga-libro__pasa { transform-box: view-box; transform-origin: 0 0;
+    animation: carga-pasa-hoja var(--dur) cubic-bezier(0.45, 0.05, 0.35, 1) var(--retraso, 0s) infinite; }
+@keyframes carga-pasa-hoja {
+    0%        { scale: 1 1; fill: var(--c-papel); }
+    18%       { fill: var(--c-hueso-oscuro); }   /* de canto, la hoja se ve más oscura */
+    36%, 100% { scale: -1 1; fill: var(--c-papel); }
+}
+@keyframes carga-estela { 0% { opacity: 1; } 100% { opacity: 0.22; } }
+@media (prefers-reduced-motion: reduce) {
+    .carga-pagina { transition: none; }
+    .carga-libro { animation: none; opacity: 0.85; }
+    .carga-libro__pasa { animation: none; display: none; }
+}

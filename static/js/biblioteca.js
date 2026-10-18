@@ -214,6 +214,43 @@
         });
     });
 
+    // Carga entre páginas: si la página siguiente tarda, aparecen los libros en círculo.
+    // Espera un momento antes de mostrarse, así en una red rápida nunca se ve un parpadeo.
+    var carga = document.querySelector('[data-carga-pagina]');
+    if (carga) {
+        var esperaCarga = null;
+        var programarCarga = function () {
+            if (esperaCarga) return;
+            esperaCarga = setTimeout(function () {
+                carga.hidden = false;
+                void carga.offsetHeight;  // primero aparece transparente, luego se funde
+                carga.classList.add('is-visible');
+            }, 400);
+        };
+        var cancelarCarga = function () {
+            clearTimeout(esperaCarga);
+            esperaCarga = null;
+            carga.classList.remove('is-visible');
+            carga.hidden = true;
+        };
+        // El navegador avisa que la página va a cambiar (enlace, formulario, recarga). Este código corre
+        // después del aviso de «cambios sin guardar»: si ese aviso va a preguntar, el usuario puede
+        // quedarse, así que no se muestra nada.
+        var omitir = false;  // enlaces que no cambian de página aunque el navegador avise (descargas)
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('a[download], [data-sin-carga]')) {
+                omitir = true;
+                setTimeout(function () { omitir = false; }, 1000);
+            }
+        });
+        window.addEventListener('beforeunload', function (e) {
+            if (e.defaultPrevented || omitir) return;
+            programarCarga();
+        });
+        // Al volver con «Atrás» el navegador puede restaurar la página tal como quedó
+        window.addEventListener('pageshow', function (e) { if (e.persisted) cancelarCarga(); });
+    }
+
     // Formularios que guardan (POST): animación en el botón y sin doble envío.
     // Cerrar sesión es instantáneo y se excluye; data-sin-carga permite excluir otros.
     document.addEventListener('submit', function (e) {

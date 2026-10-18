@@ -9,7 +9,9 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key')
+# Si falta o está vacía (por ejemplo, al copiar .env.example sin llenarla) se usa una clave de desarrollo.
+# En un servidor público siempre debe definirse una propia.
+SECRET_KEY = os.getenv('SECRET_KEY') or 'django-insecure-fallback-key'
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
