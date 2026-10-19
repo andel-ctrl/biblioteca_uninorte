@@ -1472,3 +1472,25 @@ class FormularioUsuarioPorRolTest(BaseBiblioteca):
         self.assertNotContains(r, 'name="rol"')
         self.assertNotContains(r, 'name="estado"')
         self.assertContains(r, 'name="turno"')
+
+
+# ---------------------------------------------------------------------------
+# Autores repetidos: se detectan sin importar mayúsculas ni tildes (como el buscador)
+# ---------------------------------------------------------------------------
+class AutorSinTildesTest(BaseBiblioteca):
+    def test_formulario_rechaza_el_mismo_autor_escrito_sin_tildes(self):
+        r = self.c_bib.post(reverse('catalogos:autor_create'), {'nombre': 'GABRIEL', 'apellido': 'Garcia Marquez', 'biografia': ''})
+        self.assertContains(r, 'Ya existe un autor registrado')
+        self.assertEqual(Autor.objects.filter(nombre__iexact='gabriel').count(), 1)
+
+    def test_alta_rapida_devuelve_el_existente_aunque_falten_tildes(self):
+        Autor.objects.create(nombre='Julio', apellido='Cortázar')
+        r = self.c_bib.post(reverse('catalogos:autor_rapido'), {'nombre': 'julio', 'apellido': 'CORTAZAR'})
+        self.assertEqual((r.status_code, r.json()['existente']), (200, True))
+        r = self.c_bib.post(reverse('catalogos:autor_rapido'), {'nombre': 'Ana', 'apellido': 'Núñez'})
+        r2 = self.c_bib.post(reverse('catalogos:autor_rapido'), {'nombre': 'ANA', 'apellido': 'nunez'})
+        self.assertEqual((r.status_code, r2.status_code, r2.json()['id']), (201, 200, r.json()['id']))
+
+    def test_autores_distintos_siguen_siendo_distintos(self):
+        r = self.c_bib.post(reverse('catalogos:autor_create'), {'nombre': 'Gabriela', 'apellido': 'García Márquez', 'biografia': ''}, follow=True)
+        self.assertContains(r, 'Autor creado')

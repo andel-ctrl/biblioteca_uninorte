@@ -8,3 +8,5 @@ psycopg2-binary>=2.9,<3.0
 python-dotenv>=1.0,<2.0
 whitenoise>=6.0,<7.0
 pillow>=10.0
+# Solo en el servidor: ejecuta Django en producción (en tu computador se usa runserver)
+gunicorn>=23.0

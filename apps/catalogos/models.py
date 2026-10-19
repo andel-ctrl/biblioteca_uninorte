@@ -1,4 +1,13 @@
+import unicodedata
+
 from django.db import models
+
+
+def clave_nombre(texto):
+    """Forma de comparar nombres sin importar mayúsculas, espacios ni tildes: «Núñez» = «nunez».
+    Es el mismo criterio del buscador del catálogo (extensión unaccent de PostgreSQL)."""
+    texto = unicodedata.normalize('NFKD', texto.strip().casefold())
+    return ''.join(c for c in texto if not unicodedata.combining(c))
 
 
 class Autor(models.Model):
@@ -17,11 +26,12 @@ class Autor(models.Model):
 
     @classmethod
     def buscar_igual(cls, nombre, apellido, excluir_pk=None):
-        """Autor con el mismo nombre y apellido sin importar mayúsculas ni espacios.
+        """Autor con el mismo nombre y apellido sin importar mayúsculas, espacios ni tildes
+        («García Márquez» = «garcia marquez»), igual que el buscador del catálogo.
         Se compara en Python: con la intercalación "C" de PostgreSQL, iexact no iguala "Í" con "í"."""
-        clave = (nombre.strip().casefold(), apellido.strip().casefold())
+        clave = (clave_nombre(nombre), clave_nombre(apellido))
         for autor in cls.objects.exclude(pk=excluir_pk).only('nombre', 'apellido'):
-            if (autor.nombre.strip().casefold(), autor.apellido.strip().casefold()) == clave:
+            if (clave_nombre(autor.nombre), clave_nombre(autor.apellido)) == clave:
                 return autor
         return None
 

@@ -1,7 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
 from django.conf import settings
-from django.conf.urls.static import static
 from django.shortcuts import redirect
 from django.contrib.auth import logout
 from django.contrib.auth import views as auth_views
@@ -37,7 +37,11 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(redirect_authenticated_user=True), name='login'),
     # Sin las rutas de contraseña de Django (password_reset, password_change): no hay correo configurado
     # y las contraseñas se restablecen en el mostrador, desde "Editar usuario".
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Portadas (media/): las sirve Django también con DEBUG apagado. El atajo static() solo funciona en
+    # desarrollo, y en un servidor los libros quedarían sin portada. Para un sitio con mucho tráfico
+    # convendría un almacenamiento externo; para este proyecto basta.
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]
 
 if settings.DEBUG:
     # Vista previa de la página 404 en desarrollo (con DEBUG=True Django muestra su página de diagnóstico)

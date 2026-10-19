@@ -15,6 +15,23 @@ SECRET_KEY = os.getenv('SECRET_KEY') or 'django-insecure-fallback-key'
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# --- En un servidor (hosting) ----------------------------------------------------------
+# Render define RENDER_EXTERNAL_HOSTNAME con la dirección pública (p. ej. biblioteca-uni.onrender.com):
+# se acepta ese dominio y se confía en sus formularios. En otro hosting se usan las variables
+# ALLOWED_HOSTS y CSRF_TRUSTED_ORIGINS (p. ej. https://midominio.com).
+SERVIDOR = os.getenv('RENDER_EXTERNAL_HOSTNAME', '')
+if SERVIDOR:
+    ALLOWED_HOSTS.append(SERVIDOR)
+CSRF_TRUSTED_ORIGINS = [o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
+if SERVIDOR:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{SERVIDOR}')
+# HTTPS: el hosting atiende la conexión segura y le pasa la petición a Django avisando que era HTTPS.
+# Así las cookies de sesión y de formularios solo viajan cifradas. En local (http) queda apagado.
+if os.getenv('HTTPS', 'True' if SERVIDOR else 'False') == 'True':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
