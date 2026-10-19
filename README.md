@@ -9,18 +9,32 @@ devoluciones con multa automática por retraso y reportes.
 | Carpeta | Qué contiene |
 |---|---|
 | `sql/` | Scripts de la base de datos: creación de tablas, datos básicos y consultas (ver `sql/LEEME.md`) |
-| `diagramas/` | MER (Chen) y modelo relacional, en `.png` y `.drawio` |
+| `diagramas/` | MER (notación de Chen) y modelo relacional (con y sin las tablas internas de Django), en `.png` y `.drawio` |
 | `apps/` | La aplicación: `catalogos`, `usuarios`, `prestamos` y `reportes` |
 | `templates/`, `static/` | Pantallas, estilos, imágenes y JavaScript |
+| `media/portadas/` | Portadas de los libros de prueba |
 | `tests/` | Pruebas automáticas |
 
 ---
 
-## Correr el proyecto en un computador
+## Requisitos
 
-Requisitos: **Python 3.10 o superior**, **PostgreSQL** (con pgAdmin) y Git.
+| Programa | Versión | Nota |
+|---|---|---|
+| Python | 3.10 o superior | En Windows, marcar *Add Python to PATH* al instalarlo |
+| PostgreSQL | 13 o superior | El instalador oficial trae pgAdmin y la extensión `unaccent` que usa el proyecto. Recuerda la contraseña del usuario `postgres` que pongas al instalar |
+| Git | cualquiera | Solo para clonar; también sirve descargar el proyecto en `.zip` |
 
-### 1. Traer el proyecto e instalar
+Las librerías de Python (Django, psycopg2, python-dotenv, whitenoise, pillow, gunicorn) se instalan
+solas con `requirements.txt` en el paso 1. No hace falta instalar nada más.
+
+---
+
+## Correr el proyecto en local (unos 5 minutos)
+
+### 1. Descargar el proyecto e instalar las librerías
+
+Abre una terminal en la carpeta donde quieras dejar el proyecto:
 
 ```bash
 git clone <url-del-repositorio>
@@ -28,38 +42,59 @@ cd biblioteca_uninorte
 python -m venv venv
 ```
 
-Activar el entorno: en Windows `venv\Scripts\activate`; en Mac o Linux `source venv/bin/activate`.
+Activa el entorno virtual (la terminal mostrará `(venv)` al inicio):
+
+- Windows: `venv\Scripts\activate`
+- Mac o Linux: `source venv/bin/activate`
+
+Instala las librerías:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Crear la base de datos (elige una forma)
+En Mac o Linux, si `python` no existe, usa `python3`. En Windows también funciona `py`.
 
-**Forma A, con los scripts SQL (pgAdmin):**
+### 2. Crear la base de datos con los scripts (pgAdmin)
 
-1. En pgAdmin: clic derecho en *Databases → Create → Database...* y ponle un nombre, por ejemplo `biblioteca_db`.
-2. Abre el *Query Tool* de esa base y ejecuta, en este orden, `sql/01_creacion_tablas.sql` y `sql/02_datos_basicos.sql` (F5).
+1. En pgAdmin: clic derecho en *Databases → Create → Database...*, nombre `biblioteca_db`, *Save*.
+2. Clic derecho en `biblioteca_db` → *Query Tool*.
+3. Abre `sql/01_creacion_tablas.sql` (icono de carpeta), ejecútalo con **F5** y espera el mensaje de éxito.
+4. Abre `sql/02_datos_basicos.sql` y ejecútalo con **F5**.
+5. (Opcional) `sql/03_consultas.sql` tiene las consultas de los reportes; se pueden ejecutar una por una.
 
-Con esta forma **no** hay que correr `migrate`: el script 02 deja registrada la estructura.
+Con los scripts **no** hay que correr `python manage.py migrate`: el script 02 deja registrada la
+estructura para Django.
 
-**Forma B, con Django:** crea la base vacía en pgAdmin y, después de configurar el `.env` (paso 3):
+<details>
+<summary>Alternativa: crear la base con Django en vez de los scripts</summary>
+
+Crea la base vacía `biblioteca_db` en pgAdmin, configura el `.env` (paso 3) y ejecuta:
 
 ```bash
 python manage.py migrate
 python datos_iniciales.py
 ```
 
-### 3. Configurar la conexión (`.env`)
+El resultado es la misma estructura y los mismos datos básicos (sin los préstamos de demostración).
+</details>
 
-Copia `.env.example` con el nombre `.env` y completa:
+### 3. Configurar la conexión a PostgreSQL (`.env`)
+
+Copia el archivo `.env.example` y nombra la copia `.env`:
+
+- Windows: `copy .env.example .env`
+- Mac o Linux: `cp .env.example .env`
+
+Ábrelo y escribe la contraseña de PostgreSQL en `DB_PASSWORD`:
 
 ```
 DB_NAME=biblioteca_db
-DB_PASSWORD=<la contraseña de PostgreSQL de tu computador>
+DB_USER=postgres
+DB_PASSWORD=<la contraseña de postgres de este computador>
 ```
 
-`SECRET_KEY` puede quedar vacía en tu computador.
+Lo demás puede quedar igual (`SECRET_KEY` vacía está bien en local).
 
 ### 4. Correr la aplicación
 
@@ -67,14 +102,30 @@ DB_PASSWORD=<la contraseña de PostgreSQL de tu computador>
 python manage.py runserver
 ```
 
-Abre <http://127.0.0.1:8000>. Usuarios de prueba (contraseñas completas al inicio de `sql/02_datos_basicos.sql`):
+Abre <http://127.0.0.1:8000> e inicia sesión con un usuario de prueba:
 
-| Usuario | Contraseña | Rol |
-|---|---|---|
-| `admin` | `admin123` | Bibliotecario |
-| `pedrolector` | `est123456` | Estudiante |
+| Usuario | Contraseña | Rol | Qué puede hacer |
+|---|---|---|---|
+| `admin` | `admin123` | Bibliotecario | Catálogo, usuarios, aprobar préstamos, devoluciones, multas y reportes |
+| `pedrolector` | `est123456` | Estudiante | Buscar libros, pedir préstamos y ver su historial |
 
-### Pruebas automáticas
+La lista completa (6 bibliotecarios y 6 lectores) está al inicio de `sql/02_datos_basicos.sql`.
+
+Para detener el servidor: `Ctrl + C`. Para volver a abrirlo otro día: activar el entorno (paso 1)
+y `python manage.py runserver`.
+
+### Si algo falla
+
+| Mensaje | Solución |
+|---|---|
+| `password authentication failed for user "postgres"` | La contraseña de `DB_PASSWORD` en `.env` no es la de PostgreSQL de este computador |
+| `database "biblioteca_db" does not exist` | Falta el paso 2.1, o la base tiene otro nombre que el de `DB_NAME` |
+| `relation "..." does not exist` | No se ejecutaron los scripts 01 y 02 (paso 2) |
+| `relation "..." already exists` al ejecutar el script 01 | La base no estaba vacía: bórrala, créala de nuevo y repite el paso 2 |
+| `ModuleNotFoundError: No module named 'django'` | El entorno virtual no está activado (paso 1) |
+| `connection refused` / `could not connect to server` | El servicio de PostgreSQL no está iniciado |
+
+### Pruebas automáticas (opcional)
 
 ```bash
 python manage.py test tests
