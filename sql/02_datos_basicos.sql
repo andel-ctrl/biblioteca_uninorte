@@ -248,7 +248,8 @@ INSERT INTO django_migrations (app, name, applied) VALUES
     ('sessions', '0001_initial', now()),
     ('usuarios', '0004_bibliotecario_turno', now()),
     ('usuarios', '0005_subtipos_disjuntos', now()),
-    ('prestamos', '0006_valores_por_defecto', now());
+    ('prestamos', '0006_valores_por_defecto', now()),
+    ('prestamos', '0007_fechas_en_hora_local', now());
 
 -- Los próximos registros creados desde la app continúan después de los id insertados
 SELECT setval(pg_get_serial_sequence('tarifa_multa', 'id'), (SELECT MAX(id) FROM tarifa_multa));

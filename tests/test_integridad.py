@@ -9,6 +9,7 @@ Django crea una base de datos temporal (test_<nombre>) y la elimina al terminar:
 la base de datos real nunca se toca.
 """
 import datetime
+from unittest import mock
 from decimal import Decimal
 
 from django.contrib.auth import authenticate
@@ -1494,3 +1495,30 @@ class AutorSinTildesTest(BaseBiblioteca):
     def test_autores_distintos_siguen_siendo_distintos(self):
         r = self.c_bib.post(reverse('catalogos:autor_create'), {'nombre': 'Gabriela', 'apellido': 'García Márquez', 'biografia': ''}, follow=True)
         self.assertContains(r, 'Autor creado')
+
+
+# ---------------------------------------------------------------------------
+# El bibliotecario ve el nombre de usuario (con el que se inicia sesión); nunca la contraseña
+# ---------------------------------------------------------------------------
+class NombreDeUsuarioVisibleTest(BaseBiblioteca):
+    def test_en_la_lista_la_ficha_y_la_edicion(self):
+        for url in (reverse('usuarios:usuario_list'), reverse('usuarios:usuario_detail', args=[self.lec.pk]),
+                    reverse('usuarios:usuario_edit', args=[self.lec.pk])):
+            html = self.c_bib.get(url).content.decode()
+            self.assertIn('>lector<', html, url)
+            self.assertNotIn(self.lec_user.password, html, url)   # el hash de la contraseña jamás se muestra
+
+    def test_el_lector_no_ve_la_lista_de_usuarios(self):
+        self.assertEqual(self.c_lec.get(reverse('usuarios:usuario_list')).status_code, 302)
+
+
+# ---------------------------------------------------------------------------
+# Las fechas por defecto usan la hora de Colombia, no la del servidor (Render corre en UTC)
+# ---------------------------------------------------------------------------
+class FechasEnHoraLocalTest(BaseBiblioteca):
+    def test_de_noche_en_colombia_sigue_siendo_hoy(self):
+        # 9:00 p. m. del 9 de marzo en Bogotá = 2:00 a. m. del 10 en UTC
+        noche = datetime.datetime(2030, 3, 10, 2, 0, tzinfo=datetime.timezone.utc)
+        with mock.patch('django.utils.timezone.now', return_value=noche):
+            self.assertEqual(Devolucion().fecha_devolucion, datetime.date(2030, 3, 9))
+            self.assertEqual(TarifaMulta(valor_dia=1000).vigente_desde, datetime.date(2030, 3, 9))

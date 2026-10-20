@@ -10,7 +10,7 @@ class TarifaMulta(models.Model):
     """Valor de la multa por día de retraso. Se guarda el historial: rige la activa más reciente,
     y cada multa queda enlazada a la tarifa con la que se calculó."""
     valor_dia = models.DecimalField(max_digits=8, decimal_places=2, verbose_name='Valor por día ($)')
-    vigente_desde = models.DateField(default=datetime.date.today)
+    vigente_desde = models.DateField(default=timezone.localdate)
     activa = models.BooleanField(default=True)
 
     class Meta:
@@ -189,7 +189,7 @@ class Devolucion(models.Model):
     OBSERVACIONES_MANTENIMIENTO = ('danado', 'paginas_faltantes')
 
     prestamo = models.OneToOneField(Prestamo, on_delete=models.PROTECT, related_name='devolucion')
-    fecha_devolucion = models.DateField(default=datetime.date.today)
+    fecha_devolucion = models.DateField(default=timezone.localdate)
     observacion = models.CharField(max_length=50, choices=OBSERVACION_CHOICES, blank=True)
     detalle_observacion = models.TextField(blank=True)
     registrado_por = models.ForeignKey(

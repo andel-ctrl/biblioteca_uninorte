@@ -46,7 +46,7 @@
     <tbody>
         {% for u in usuarios %}
         <tr>
-            <td data-label="Usuario"><div><a class="tabla__titulo text-decoration-none" href="{% url 'usuarios:usuario_detail' u.pk %}">{{ u.get_nombre_completo }}</a><span class="tabla__meta">{{ u.user.email|default:"Sin correo" }}</span></div></td>
+            <td data-label="Usuario"><div><a class="tabla__titulo text-decoration-none" href="{% url 'usuarios:usuario_detail' u.pk %}">{{ u.get_nombre_completo }}</a><span class="tabla__meta"><span class="mono">{{ u.user.username }}</span> · {{ u.user.email|default:"Sin correo" }}</span></div></td>
             <td data-label="Código" class="mono">{{ u.codigo_universitario }}</td>
             <td data-label="Rol"><div>{{ u.get_rol_display }}{% if u.carrera %}<span class="tabla__meta">{{ u.carrera }}</span>{% elif u.get_turno_display %}<span class="tabla__meta">Turno de la {{ u.get_turno_display|lower }}</span>{% endif %}</div></td>
             <td data-label="Estado">{% estado u.estado 'usuario' %}</td>

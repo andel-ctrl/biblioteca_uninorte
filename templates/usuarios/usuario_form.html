@@ -49,6 +49,13 @@ los que no aplican. Al editar, el servidor ya quita los que no corresponden al s
 <p class="formulario__seccion">Cuenta de acceso</p>
 {% if form.username %}{% include 'componentes/_campo.html' with field=form.username %}{% endif %}
 {% if form.password %}{% include 'componentes/_campo.html' with field=form.password %}{% endif %}
+{% if usuario %}
+<div class="campo">
+    <span class="form-label">Usuario</span>
+    <p class="campo__fijo mono">{{ usuario.user.username }}</p>
+    <div class="form-text">Con este nombre inicia sesión. No se cambia desde aquí.</div>
+</div>
+{% endif %}
 {% if form.nueva_password %}{% include 'componentes/_campo.html' with field=form.nueva_password %}{% endif %}
 {% endblock %}
 
