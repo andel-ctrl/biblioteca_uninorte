@@ -511,7 +511,7 @@
 .ficha-libro__datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 0 0 2rem; border-top: 1.5px solid var(--c-tinta); border-bottom: 1px solid var(--borde); }
 .ficha-libro__datos > div { padding: 0.85rem 1rem 0.85rem 0; }
 .ficha-libro__datos dt { font-family: var(--f-mono); font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--t-secundario); margin-bottom: 0.25rem; }
-.ficha-libro__datos dd { margin: 0; font-weight: 500; }
+.ficha-libro__datos dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
 .ficha-libro__sinopsis h2 { font-family: var(--f-mono); font-size: 0.7rem; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-borgona); margin: 0 0 0.6rem; }
 .ficha-libro__sinopsis p { font-family: var(--f-sans); font-size: 1.02rem; line-height: 1.75; max-width: 64ch; color: var(--c-tinta); }
 .ficha-libro__sinopsis p:first-child::first-letter { font-family: var(--f-serif); font-size: 3.4em; float: left; line-height: 0.85; margin: 0.08em 0.1em 0 0; color: var(--c-borgona); font-weight: 400; }
@@ -621,6 +621,13 @@ tr:nth-child(1) .ranking__puesto--chico { color: var(--c-borgona); font-style: i
     .ranking__total strong { display: inline; font-size: 1.1rem; margin-right: 0.25rem; }
     .indice-estados { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .indice-estados__item:nth-child(3) { padding-left: 0; border-left: 0; }
+}
+/* Celulares angostos: menos margen interno para que «En mantenimiento» quepa en su casilla */
+@media (max-width: 399.98px) {
+    .indice-estados__item { padding-right: 0.6rem; }
+    .indice-estados__item + .indice-estados__item { padding-left: 0.6rem; }
+    .indice-estados__item:nth-child(3) { padding-left: 0; }
+    .indice-estados__item .estado { letter-spacing: 0.03em; padding-left: 0.4rem; padding-right: 0.4rem; }
 }
 /* Historial dentro de una columna angosta (detalle de usuario): la multa baja bajo el libro */
 .detalle-prestamo .historial__fila { grid-template-columns: 5.5rem minmax(0, 1fr) auto; }

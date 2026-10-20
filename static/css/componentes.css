@@ -40,7 +40,7 @@
 .colofon__dato strong { color: var(--c-tinta); font-weight: 500; }
 @keyframes estrella-aparece { from { opacity: 0; transform: rotate(-90deg) scale(0.4); } to { opacity: 1; transform: none; } }
 @keyframes linea-traza { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@media (max-width: 575.98px) { .colofon { flex-wrap: wrap; } .colofon__dato { width: 100%; order: 3; } }
+@media (max-width: 575.98px) { .colofon { flex-wrap: wrap; } .colofon__dato { width: 100%; order: 3; white-space: normal; } }
 
 /* --- Botones -------------------------------------------------------------- */
 .btn {
@@ -294,6 +294,8 @@ tr:nth-child(even) .estado, li:nth-child(even) .estado, .registro:nth-child(even
 .registro:hover .registro__portada .tomo, .registro:focus-within .registro__portada .tomo { --giro: -34deg; --alza: -3px; }
 .registro__ref { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--t-secundario); margin-bottom: 0.3rem; }
 .registro__ref .sep { color: var(--c-dorado); margin: 0 0.35rem; }
+/* El ISBN baja entero a la línea siguiente si no cabe (sin esto empujaba la página hacia la derecha en el celular) */
+.registro__isbn { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
 .registro__titulo { font-size: 1.45rem; line-height: 1.12; margin: 0 0 0.25rem; font-weight: 420; letter-spacing: -0.005em; }
 .registro__titulo a { color: var(--c-tinta); text-decoration: none; }
 .registro__titulo a::after { content: ""; position: absolute; inset: 0; } /* toda la fila es clicable */

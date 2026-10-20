@@ -10,7 +10,7 @@ Fila bibliográfica de un libro. Requiere un libro anotado con n_ejemplares y n_
     </div>
     <div>
         <div class="registro__ref">
-            {{ libro.categoria.nombre|default:"General" }}<span class="sep">/</span>{{ libro.anio_publicacion }}<span class="sep">/</span><span class="text-nowrap">ISBN {{ libro.isbn }}</span>
+            {{ libro.categoria.nombre|default:"General" }}<span class="sep">/</span>{{ libro.anio_publicacion }}<span class="sep">/</span><span class="registro__isbn">ISBN {{ libro.isbn }}</span>
         </div>
         <h3 class="registro__titulo"><a href="{% url 'catalogos:libro_detail' libro.pk %}">{{ libro.titulo }}</a></h3>
         <div class="registro__autores">
