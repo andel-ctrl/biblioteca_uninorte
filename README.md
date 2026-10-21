@@ -4,6 +4,21 @@ Laboratorio 01 de Bases de Datos. Aplicación web para el préstamo y la devoluc
 catálogo de libros y ejemplares, usuarios (lectores y bibliotecarios), préstamos con aprobación,
 devoluciones con multa automática por retraso y reportes.
 
+## Página publicada
+
+**https://biblioteca-uni.onrender.com**
+
+> La página está en el plan gratuito de Render: si nadie la ha usado en los últimos 15 minutos,
+> el servidor se apaga y la primera visita puede tardar hasta un minuto en cargar. Después funciona con normalidad.
+
+Usuarios de prueba:
+
+| Rol | Usuario | Contraseña | Qué puede hacer |
+|---|---|---|---|
+| Bibliotecario | `admin` | `admin123` | Catálogo, usuarios, aprobar préstamos, devoluciones, multas y reportes |
+| Lector (estudiante) | `pedrolector` | `est123456` | Buscar libros, pedir préstamos y ver su historial |
+
+
 **Tecnologías:** Python · Django · PostgreSQL · Bootstrap 5.
 
 | Carpeta | Qué contiene |
